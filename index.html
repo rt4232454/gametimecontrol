@@ -130,7 +130,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録（OCR＆タップグリッド） -->
+    <!-- タブ 3: 時間割登録（OCR＆タップグリッド＆内訳表示） -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
@@ -154,36 +154,57 @@
       </div>
 
       <!-- 時間割グリッド・目標確定エリア -->
-      <div id="reviewSection" class="hidden bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="font-bold text-slate-700 text-sm">📅 よみとり結果（タップで変更可）</h3>
-          <span class="text-[11px] text-slate-500">〇:出席 / △:一部</span>
+      <div id="reviewSection" class="hidden space-y-4">
+        
+        <!-- 積算内訳カード（新設） -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-amber-200">
+          <div class="flex justify-between items-baseline border-b border-amber-100 pb-2 mb-3">
+            <span class="text-xs font-bold text-amber-900">週末ご褒美 見込み合計</span>
+            <div>
+              <span id="rewardMinutes" class="text-3xl font-black text-amber-600">0</span>
+              <span class="text-sm font-bold text-amber-700">分</span>
+            </div>
+          </div>
+
+          <!-- 内訳明細リスト -->
+          <div class="space-y-1.5 text-xs" id="rewardBreakdownList">
+            <!-- JSで動的に内訳行を挿入 -->
+          </div>
+
+          <!-- 補足説明 -->
+          <p class="text-[10px] text-slate-400 mt-3 pt-2 border-t border-slate-100">
+            ※ 〇宣言した教科をすべて受講で1教科40分。毎日登校（タッチ含む）達成で+30分。
+          </p>
         </div>
 
-        <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center text-xs text-amber-800">
-          全出席できたときの週末ご褒美見込み：
-          <span id="rewardMinutes" class="text-xl font-black text-amber-600">0</span> 分！
+        <!-- 時間割テーブル -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center border-b pb-2">
+            <h3 class="font-bold text-slate-700 text-sm">📅 よみとり結果（タップで変更可）</h3>
+            <span class="text-[11px] text-slate-500">🔴:全出席 / 🔺:一部出席</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-center border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-600">
+                  <th class="p-1.5 border border-slate-200">限</th>
+                  <th class="p-1.5 border border-slate-200">月</th>
+                  <th class="p-1.5 border border-slate-200">火</th>
+                  <th class="p-1.5 border border-slate-200">水</th>
+                  <th class="p-1.5 border border-slate-200">木</th>
+                  <th class="p-1.5 border border-slate-200">金</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+
+          <button id="saveGoalBtn" onclick="saveGoals()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md text-base mt-2">
+            🎯 これで今週の目標をけってい！
+          </button>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-center border-collapse text-xs">
-            <thead>
-              <tr class="bg-slate-100 text-slate-600">
-                <th class="p-1.5 border border-slate-200">限</th>
-                <th class="p-1.5 border border-slate-200">月</th>
-                <th class="p-1.5 border border-slate-200">火</th>
-                <th class="p-1.5 border border-slate-200">水</th>
-                <th class="p-1.5 border border-slate-200">木</th>
-                <th class="p-1.5 border border-slate-200">金</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-        </div>
-
-        <button id="saveGoalBtn" onclick="saveGoals()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md text-base mt-2">
-          🎯 これで今週の目標をけってい！
-        </button>
       </div>
 
     </section>
@@ -191,10 +212,9 @@
   </main>
 
   <script>
-    // 指定されたGAS Web App URL
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx4cKXsDLzfI5CJn0_D2oNhLow4HUc50JueHuA-QxANDRsl_q-7CaVcqrlmpBc1O9IX/exec";
 
-    // --- タブ切り替え ---
+    // タブ切り替え
     function switchTab(tab) {
       ["Timer", "Daily", "Schedule"].forEach(t => {
         const isTarget = t.toLowerCase() === tab;
@@ -209,7 +229,7 @@
       if (tab === "timer") fetchDashboardData();
     }
 
-    // --- ダッシュボード残高の取得 (GET) ---
+    // ダッシュボード残高取得
     async function fetchDashboardData() {
       try {
         const res = await fetch(GAS_API_URL);
@@ -226,7 +246,7 @@
       }
     }
 
-    // --- タイマー機能 ---
+    // タイマー
     let timerInterval = null;
     let timerSeconds = 0;
     let timerStartTime = null;
@@ -281,7 +301,7 @@
       }
     }
 
-    // --- 日次アクション保存 (POST) ---
+    // 日次アクション保存
     async function saveDailyActions() {
       const btn = document.getElementById("saveDailyBtn");
       btn.disabled = true;
@@ -316,7 +336,7 @@
       }
     }
 
-    // --- 時間割写真OCR＆進捗バー ---
+    // 時間割登録・OCR
     const cameraInput = document.getElementById("cameraInput");
     const uploadSection = document.getElementById("uploadSection");
     const progressSection = document.getElementById("progressSection");
@@ -326,6 +346,7 @@
     const reviewSection = document.getElementById("reviewSection");
     const tableBody = document.getElementById("tableBody");
     const rewardMinutes = document.getElementById("rewardMinutes");
+    const rewardBreakdownList = document.getElementById("rewardBreakdownList");
     let currentSchedule = [];
 
     function updateProgress(percent, msg) {
@@ -458,12 +479,76 @@
       td.textContent = `${badge}${item.subject || "ー"}`;
     }
 
+    // --- 積算内訳と合計の計算 ---
     function calcGoalReward() {
-      const subjects = new Set();
-      currentSchedule.forEach(i => {
-        if (i.mark === "circle" && i.subject) subjects.add(i.subject);
+      // 教科ごとにコマ数・マークをカウント
+      const subjectStats = {};
+
+      currentSchedule.forEach(item => {
+        if (!item.subject || !item.mark) return;
+        const subj = item.subject;
+        if (!subjectStats[subj]) {
+          subjectStats[subj] = { circle: 0, triangle: 0 };
+        }
+        if (item.mark === "circle") subjectStats[subj].circle++;
+        if (item.mark === "triangle") subjectStats[subj].triangle++;
       });
-      rewardMinutes.textContent = subjects.size * 40;
+
+      rewardBreakdownList.innerHTML = "";
+      let totalMinutes = 0;
+      let hasDeclaration = false;
+
+      // 各教科の内訳を生成
+      for (const [subj, stats] of Object.entries(subjectStats)) {
+        hasDeclaration = true;
+        let points = 0;
+        let badgeLabel = "";
+
+        if (stats.circle > 0) {
+          points = 40; // 予定した全コマ出席で40分
+          badgeLabel = `<span class="text-rose-600 font-bold">🔴 全出席（${stats.circle}コマ）</span>`;
+        } else if (stats.triangle > 0) {
+          points = 30; // 一部出席目標で30分
+          badgeLabel = `<span class="text-amber-600 font-bold">🔺 一部出席（${stats.triangle}コマ）</span>`;
+        }
+
+        totalMinutes += points;
+
+        const row = document.createElement("div");
+        row.className = "flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100";
+        row.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-slate-800">${subj}</span>
+            <span class="text-[11px] text-slate-400">(${badgeLabel})</span>
+          </div>
+          <span class="font-bold text-slate-700">+${points}分</span>
+        `;
+        rewardBreakdownList.appendChild(row);
+      }
+
+      // 1週間連続登校ボーナス（+30分）
+      const continuousBonus = 30;
+      totalMinutes += continuousBonus;
+
+      const bonusRow = document.createElement("div");
+      bonusRow.className = "flex justify-between items-center bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-100 text-indigo-900";
+      bonusRow.innerHTML = `
+        <div class="flex items-center gap-1.5">
+          <span class="font-bold">🏫 1週間毎日登校ボーナス</span>
+          <span class="text-[10px] text-indigo-500">(タッチ・保健室含む)</span>
+        </div>
+        <span class="font-bold text-indigo-700">+${continuousBonus}分</span>
+      `;
+      rewardBreakdownList.appendChild(bonusRow);
+
+      if (!hasDeclaration) {
+        const emptyNote = document.createElement("div");
+        emptyNote.className = "text-center text-slate-400 py-1 text-[11px]";
+        emptyNote.textContent = "まだ教科の宣言がありません（時間割のマスをタップしてね）";
+        rewardBreakdownList.prepend(emptyNote);
+      }
+
+      rewardMinutes.textContent = totalMinutes;
     }
 
     async function saveGoals() {
@@ -489,7 +574,6 @@
       }
     }
 
-    // 初回ロード時に残高取得
     window.addEventListener("DOMContentLoaded", fetchDashboardData);
   </script>
 </body>
