@@ -63,6 +63,7 @@
         <div>
           <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">いつでも使ってOK！</span>
           <div class="text-sm font-bold mt-1">🎨 クリスタ専用のこり時間</div>
+          <span class="text-[10px] text-amber-100 block">※実績登録に応じて獲得（最大75分）</span>
         </div>
         <div class="text-right">
           <span id="displayCrystaRemaining" class="text-4xl font-black">--</span>
@@ -92,7 +93,10 @@
             <span id="bAttendMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
-            <span>📖 ゆい道（前日実施ボーナス）</span>
+            <div>
+              <span>📖 ゆい道（前日達成ボーナス）</span>
+              <span id="bYuidoTodayBadge" class="hidden text-[10px] text-emerald-600 font-bold ml-1">[本日実施済:明日+10分]</span>
+            </div>
             <span id="bYuidoMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
@@ -112,7 +116,7 @@
           </div>
           <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
             <span class="text-[11px] font-bold text-amber-900 block">クリスタ枠</span>
-            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△宣言 (1日15分×最大5日)</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△宣言日の登校実績 (1日15分)</span>
           </div>
         </div>
       </div>
@@ -186,14 +190,14 @@
           <span class="text-xs sm:text-sm font-bold text-slate-700">学校へ登校＆帰宅後のお勉強完了（＋60分）</span>
         </label>
 
-        <!-- ゆい道（翌日反映である旨を明記） -->
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-          <label class="flex items-center gap-3 cursor-pointer">
+        <!-- ゆい道 -->
+        <label class="flex flex-col p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+          <div class="flex items-center gap-3">
             <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
             <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！</span>
-          </label>
-          <p class="text-[11px] text-indigo-600 pl-8 font-medium">※がんばった分は「あす（翌日）」のゲーム時間に＋10分加算されます✨</p>
-        </div>
+          </div>
+          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日のゲーム時間に加算されます。</span>
+        </label>
 
         <!-- 保健室特別課題 -->
         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -344,7 +348,6 @@
       loadDailyRecordForSelectedDate();
     }
 
-    // ダッシュボード残高取得
     async function fetchDashboardData() {
       const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
@@ -368,6 +371,7 @@
             document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin}分`;
             document.getElementById("bHokenTodayMin").textContent = `+${b.hokenTodayMin}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
+            document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
           }
         }
       } catch (e) {
@@ -375,7 +379,6 @@
       }
     }
 
-    // 「実績の入力」：指定日の読込
     async function loadDailyRecordForSelectedDate() {
       const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
       try {
@@ -394,7 +397,6 @@
       }
     }
 
-    // 「実績の入力」：保存処理
     async function saveDailyActions() {
       const btn = document.getElementById("saveDailyBtn");
       btn.disabled = true;
@@ -418,7 +420,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の記録を保存しました！\n（ゆい道の実績は翌日の残高に+10分反映されます）`);
+          alert(`${targetDate} の記録を保存しました！\n（ゆい道は翌日の残高に加算されます）`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
@@ -458,7 +460,6 @@
       renderTable(blank);
     }
 
-    // タイマー
     let timerInterval = null;
     let timerSeconds = 0;
     let timerStartTime = null;
@@ -522,7 +523,6 @@
       }
     }
 
-    // 時間割登録
     const cameraInput = document.getElementById("cameraInput");
     const progressSection = document.getElementById("progressSection");
     const progressBar = document.getElementById("progressBar");
@@ -676,7 +676,6 @@
         }
       });
 
-      // 通常ゲーム
       gameBreakdownList.innerHTML = "";
       let gTotal = 0;
       for (const [subj, count] of Object.entries(gameSubjects)) {
@@ -693,7 +692,6 @@
       gameBreakdownList.appendChild(bonusRow);
       gameTotalMin.textContent = gTotal;
 
-      // クリスタ
       crystaBreakdownList.innerHTML = "";
       let activeDaysCount = 0;
 
@@ -705,7 +703,7 @@
           row.className = "flex justify-between items-center text-amber-900";
           row.innerHTML = `
             <span>🔺 ${d}曜日 (${list.join("・")})</span>
-            <span class="font-bold text-amber-700">+15分</span>
+            <span class="font-bold text-amber-700">+15分(登校達成時)</span>
           `;
           crystaBreakdownList.appendChild(row);
         }
