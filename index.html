@@ -31,7 +31,7 @@
   <main class="max-w-md mx-auto p-4 space-y-4">
 
     <!-- ============================================== -->
-    <!-- タブ 1: タイマー ＆ 残高（実績連動） -->
+    <!-- タブ 1: タイマー ＆ 残高 -->
     <!-- ============================================== -->
     <section id="tabTimer" class="space-y-4">
       
@@ -44,17 +44,17 @@
         </div>
       </div>
 
-      <!-- 通常ゲーム残高カード -->
+      <!-- 通常ゲーム残高カード（当日限り使い切り） -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
-        <p class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（通常枠）</p>
+        <p class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（当日限り有効）</p>
         <div class="my-1">
-          <span id="displayRemainingMin" class="text-5xl font-black">--</span>
+          <span id="displayRemainingMin" class="text-5xl font-black">0</span>
           <span class="text-xl font-bold ml-1">分</span>
         </div>
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
-          <div>この日獲得: <span id="displayEarned" class="font-bold">--</span> 分</div>
-          <div>この日使用: <span id="displaySpent" class="font-bold">--</span> 分</div>
-          <div>週末プール: <span id="displayWeekend" class="font-bold">--</span> 分</div>
+          <div>この日獲得: <span id="displayEarned" class="font-bold">0</span> 分</div>
+          <div>この日使用: <span id="displaySpent" class="font-bold">0</span> 分</div>
+          <div>週末プール: <span id="displayWeekend" class="font-bold">0</span> 分</div>
         </div>
       </div>
 
@@ -66,7 +66,7 @@
           <span class="text-[10px] text-amber-100 block">※時間割△＋保健室課題でストック</span>
         </div>
         <div class="text-right">
-          <span id="displayCrystaRemaining" class="text-4xl font-black">--</span>
+          <span id="displayCrystaRemaining" class="text-4xl font-black">0</span>
           <span class="text-base font-bold ml-0.5">分</span>
         </div>
       </div>
@@ -75,22 +75,24 @@
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
-          <span class="text-[10px] text-slate-400">実績入力と完全連動</span>
+          <span class="text-[10px] text-slate-400">当日限り有効（繰越なし）</span>
         </div>
 
-        <!-- 通常ゲーム獲得内訳（保健室課題は除外） -->
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
           <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
-            <span>通常ゲーム獲得時間（平日合計）</span>
-            <span id="breakdownTodayEarned">-- 分</span>
+            <span>通常ゲーム獲得合計</span>
+            <span id="breakdownTodayEarned">0 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
             <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--</span>)</span>
             <span id="bWakeMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
-            <span>🏫 登校＆帰宅後勉強完了</span>
-            <span id="bAttendMin">+0分</span>
+            <div>
+              <span>🏫 帰宅後お勉強（5教科全完了で達成）</span>
+              <span id="bStudyDetail" class="text-[10px] text-slate-400 block">国2/数4/理2/社2/英4</span>
+            </div>
+            <span id="bAttendMin" class="font-bold">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
             <div>
@@ -104,11 +106,10 @@
           </div>
         </div>
 
-        <!-- 週末ゲームプール・クリスタの根拠 -->
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div class="bg-indigo-50/70 p-2 rounded-xl border border-indigo-100">
             <span class="text-[11px] font-bold text-indigo-900 block">週末プール</span>
-            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 (全出席達成で40分/教科)</span>
+            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 (全出席で40分/教科)</span>
           </div>
           <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
             <span class="text-[11px] font-bold text-amber-900 block">クリスタ専用枠</span>
@@ -157,7 +158,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 2: 実績の入力（日付切替対応） -->
+    <!-- タブ 2: 実績の入力（5教科チェックリスト完備） -->
     <!-- ============================================== -->
     <section id="tabDaily" class="hidden space-y-4">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -177,14 +178,44 @@
         <!-- 起床時刻 -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">⏰ 起きた時間（6:30までの残り分数・最大30分ゲット）</label>
-          <input type="time" id="wakeTimeInput" value="06:15" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
+          <input type="time" id="wakeTimeInput" value="" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
         </div>
 
-        <!-- 登校＆課題 -->
-        <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-          <input type="checkbox" id="attendCheck" checked class="w-5 h-5 text-indigo-600 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-700">学校へ登校＆帰宅後のお勉強完了（＋60分）</span>
-        </label>
+        <!-- 帰宅後お勉強（5教科すべてチェックで+60分） -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
+            <div>
+              <span class="text-xs sm:text-sm font-bold text-slate-800 block">📚 帰宅後お勉強</span>
+              <span class="text-[10px] text-slate-500">すべてにチェックがついたら ＋60分</span>
+            </div>
+            <div id="studyBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+              0 / 5 達成
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2 text-xs">
+            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" id="chkKokugo" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-slate-700">国語（２コマ）</span>
+            </label>
+            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" id="chkSugaku" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-slate-700">数学（４コマ）</span>
+            </label>
+            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" id="chkRika" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-slate-700">理科（２コマ）</span>
+            </label>
+            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" id="chkShakai" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-slate-700">社会（２コマ）</span>
+            </label>
+            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+              <input type="checkbox" id="chkEigo" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
+              <span class="font-medium text-slate-700">英語（４コマ）</span>
+            </label>
+          </div>
+        </div>
 
         <!-- ゆい道 -->
         <label class="flex flex-col p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
@@ -192,21 +223,20 @@
             <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
             <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！</span>
           </div>
-          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日の通常ゲーム時間に加算されます。</span>
+          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日の通常ゲーム枠に加算されます。</span>
         </label>
 
-        <!-- 保健室特別課題（クリスタ専用） -->
-        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
-          <div class="flex justify-between items-center">
-            <span class="text-xs sm:text-sm font-bold text-amber-900">🎨 保健室での図工・特別課題</span>
-            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">クリスタ専用枠</span>
+        <!-- 保健室特別課題（チェックボックス） -->
+        <label class="flex flex-col p-3 bg-amber-50/80 rounded-xl border border-amber-200 cursor-pointer">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <input type="checkbox" id="hokenCheck" class="w-5 h-5 text-amber-600 rounded accent-amber-500">
+              <span class="text-xs sm:text-sm font-bold text-amber-950">保健室での図工・特別課題をやった！</span>
+            </div>
+            <span class="text-xs font-black text-amber-600 bg-white px-2 py-0.5 rounded-md border border-amber-200">+15分</span>
           </div>
-          <div class="flex items-center justify-between text-xs pt-1">
-            <span class="text-slate-700">取り組んだ回数（1回＝15分）：</span>
-            <input type="number" id="hokenCountInput" min="0" max="5" value="0" class="w-16 border border-slate-300 rounded p-1 text-center font-bold">
-          </div>
-          <span class="text-[10px] text-amber-700 block mt-1">※ 通常のゲーム枠には入らず、クリスタ専用時間として貯まります。</span>
-        </div>
+          <span class="text-[10px] text-amber-700 mt-1 pl-8">※ 通常のゲーム時間には入らず、クリスタ専用枠として貯まります。</span>
+        </label>
 
         <button id="saveDailyBtn" onclick="saveDailyActions()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
           💾 この日の記録を保存して残高に反映
@@ -215,7 +245,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録（常に最新データを保持・表示） -->
+    <!-- タブ 3: 時間割登録 -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
@@ -226,7 +256,6 @@
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
       </div>
 
-      <!-- プログレスバー -->
       <div id="progressSection" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
         <div class="flex justify-between items-center text-xs">
           <span id="statusMessage" class="font-bold text-indigo-700">じゅんび中...</span>
@@ -237,17 +266,14 @@
         </div>
       </div>
 
-      <!-- 時間割グリッド・最新状態の確認・編集 -->
       <div id="reviewSection" class="space-y-4">
         
-        <!-- 積算内訳カード -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="border-b pb-2 flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700">見込み時間の積算内訳</span>
             <span class="text-[11px] text-slate-400">🔴＝通常 / 🔺＝クリスタ(1日15分)</span>
           </div>
 
-          <!-- 通常ゲーム見込み -->
           <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
             <div class="flex justify-between items-center mb-1.5">
               <span class="text-xs font-bold text-indigo-900">🎮 週末ゲーム時間 見込み</span>
@@ -256,7 +282,6 @@
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
           </div>
 
-          <!-- クリスタ見込み（別枠・1日1つ以上で15分・週最大75分） -->
           <div class="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
             <div class="flex justify-between items-center mb-1.5">
               <div>
@@ -269,7 +294,6 @@
           </div>
         </div>
 
-        <!-- 時間割テーブル -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
             <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 今週の時間割（タップで変更可）</h3>
@@ -340,6 +364,27 @@
       loadDailyRecordForSelectedDate();
     }
 
+    // 5教科の達成状況バッジ更新
+    function updateStudyStatus() {
+      const checks = [
+        document.getElementById("chkKokugo").checked,
+        document.getElementById("chkSugaku").checked,
+        document.getElementById("chkRika").checked,
+        document.getElementById("chkShakai").checked,
+        document.getElementById("chkEigo").checked
+      ];
+      const count = checks.filter(Boolean).length;
+      const badge = document.getElementById("studyBadge");
+
+      if (count === 5) {
+        badge.textContent = "🎉 5教科完了 (+60分)";
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300";
+      } else {
+        badge.textContent = `${count} / 5 達成 (未完了)`;
+        badge.className = "text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200";
+      }
+    }
+
     async function fetchDashboardData() {
       const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
@@ -363,6 +408,25 @@
             document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
             document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
+
+            // 5教科の達成状態を詳細表示
+            const doneList = [];
+            if (b.studyKokugo) doneList.push("国語");
+            if (b.studySugaku) doneList.push("数学");
+            if (b.studyRika) doneList.push("理科");
+            if (b.studyShakai) doneList.push("社会");
+            if (b.studyEigo) doneList.push("英語");
+
+            if (doneList.length === 5) {
+              document.getElementById("bStudyDetail").textContent = "5教科すべて完了！";
+              document.getElementById("bStudyDetail").className = "text-[10px] text-emerald-600 font-bold block";
+            } else if (doneList.length > 0) {
+              document.getElementById("bStudyDetail").textContent = `達成: ${doneList.join("・")} (${doneList.length}/5)`;
+              document.getElementById("bStudyDetail").className = "text-[10px] text-amber-600 block";
+            } else {
+              document.getElementById("bStudyDetail").textContent = "国2/数4/理2/社2/英4 (未完了)";
+              document.getElementById("bStudyDetail").className = "text-[10px] text-slate-400 block";
+            }
           }
         }
       } catch (e) {
@@ -377,10 +441,15 @@
         const json = await res.json();
         if (json.status === "success" && json.record) {
           const r = json.record;
-          document.getElementById("wakeTimeInput").value = r.wake_time || "06:15";
-          document.getElementById("attendCheck").checked = r.attended;
+          document.getElementById("wakeTimeInput").value = r.wake_time || "";
+          document.getElementById("chkKokugo").checked = r.study_kokugo;
+          document.getElementById("chkSugaku").checked = r.study_sugaku;
+          document.getElementById("chkRika").checked = r.study_rika;
+          document.getElementById("chkShakai").checked = r.study_shakai;
+          document.getElementById("chkEigo").checked = r.study_eigo;
           document.getElementById("yuidoCheck").checked = r.yuido;
-          document.getElementById("hokenCountInput").value = r.hoken_count;
+          document.getElementById("hokenCheck").checked = r.hoken_done;
+          updateStudyStatus();
         }
       } catch (e) {
         console.error("日次レコード読込エラー:", e);
@@ -397,9 +466,13 @@
         action: "update_daily",
         target_date: targetDate,
         wake_time: document.getElementById("wakeTimeInput").value,
-        attended: document.getElementById("attendCheck").checked,
+        study_kokugo: document.getElementById("chkKokugo").checked,
+        study_sugaku: document.getElementById("chkSugaku").checked,
+        study_rika: document.getElementById("chkRika").checked,
+        study_shakai: document.getElementById("chkShakai").checked,
+        study_eigo: document.getElementById("chkEigo").checked,
         yuido: document.getElementById("yuidoCheck").checked,
-        hoken_count: Number(document.getElementById("hokenCountInput").value) || 0
+        hoken_done: document.getElementById("hokenCheck").checked
       };
 
       try {
@@ -409,7 +482,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の記録を保存しました！\n（保健室課題はクリスタ枠に加算され、ゆい道は翌日の通常ゲーム枠に加算されます）`);
+          alert(`${targetDate} の記録を保存しました！\n（5教科全完了で+60分反映されます）`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
