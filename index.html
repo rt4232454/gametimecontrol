@@ -61,7 +61,7 @@
         </div>
       </div>
 
-      <!-- 積算内訳カード（新設） -->
+      <!-- 積算内訳カード -->
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="text-xs font-bold text-slate-700">📊 各時間の積算内訳</span>
@@ -75,7 +75,7 @@
             <span id="breakdownTodayEarned">-- 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
-            <span>⏰ 起床時間 (<span id="bWakeTime">--</span>)</span>
+            <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--</span>)</span>
             <span id="bWakeMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
@@ -156,8 +156,8 @@
 
         <!-- 起床時刻 -->
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">⏰ 起きた時間（朝6:00なら30分ゲット・持ち越し可）</label>
-          <input type="time" id="wakeTimeInput" value="06:30" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
+          <label class="block text-xs font-bold text-slate-600 mb-1">⏰ 起きた時間（6:30までの残り分数・最大30分ゲット）</label>
+          <input type="time" id="wakeTimeInput" value="06:15" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
         </div>
 
         <!-- 登校＆課題 -->
@@ -199,6 +199,7 @@
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
+      <!-- 撮影ボタンエリア -->
       <div id="uploadSection" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
         <label for="cameraInput" class="cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm">
           📷 新しいじかんわりを さつえい・更新する
@@ -313,7 +314,6 @@
           document.getElementById("displayWeekend").textContent = d.weekend_pool;
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
 
-          // 本日獲得の内訳表示を更新
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
             document.getElementById("breakdownTodayEarned").textContent = `${d.earned_today} 分`;
