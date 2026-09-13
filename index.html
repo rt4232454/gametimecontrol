@@ -54,7 +54,7 @@
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
           <div>この日獲得: <span id="displayEarned" class="font-bold">0</span> 分</div>
           <div>この日使用: <span id="displaySpent" class="font-bold">0</span> 分</div>
-          <div>週末プール: <span id="displayWeekend" class="font-bold">0</span> 分</div>
+          <div>週末ボーナス: <span id="displayWeekend" class="font-bold">0</span> 分</div>
         </div>
       </div>
 
@@ -108,7 +108,7 @@
 
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div class="bg-indigo-50/70 p-2 rounded-xl border border-indigo-100">
-            <span class="text-[11px] font-bold text-indigo-900 block">週末プール</span>
+            <span class="text-[11px] font-bold text-indigo-900 block">週末ボーナス</span>
             <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 (全出席で40分/教科)</span>
           </div>
           <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
@@ -276,7 +276,7 @@
 
           <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-indigo-900">🎮 週末ゲーム時間 見込み</span>
+              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み</span>
               <span class="text-lg font-black text-indigo-600"><span id="gameTotalMin">0</span> 分</span>
             </div>
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
@@ -364,7 +364,6 @@
       loadDailyRecordForSelectedDate();
     }
 
-    // 5教科の達成状況バッジ更新
     function updateStudyStatus() {
       const checks = [
         document.getElementById("chkKokugo").checked,
@@ -395,7 +394,7 @@
           document.getElementById("displayRemainingMin").textContent = d.remaining_time;
           document.getElementById("displayEarned").textContent = d.earned_today;
           document.getElementById("displaySpent").textContent = d.spent_today;
-          document.getElementById("displayWeekend").textContent = d.weekend_pool;
+          document.getElementById("displayWeekend").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : (d.weekend_pool || 0);
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
 
@@ -409,7 +408,6 @@
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
             document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
 
-            // 5教科の達成状態を詳細表示
             const doneList = [];
             if (b.studyKokugo) doneList.push("国語");
             if (b.studySugaku) doneList.push("数学");
