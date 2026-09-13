@@ -20,7 +20,7 @@
         ⏱️ タイマー・残高
       </button>
       <button id="tabBtnDaily" onclick="switchTab('daily')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
-        📝 今日の入力
+        📝 実績の入力
       </button>
       <button id="tabBtnSchedule" onclick="switchTab('schedule')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
         📅 時間割とうろく
@@ -31,10 +31,19 @@
   <main class="max-w-md mx-auto p-4 space-y-4">
 
     <!-- ============================================== -->
-    <!-- タブ 1: タイマー ＆ 残高（積算内訳の可視化付き） -->
+    <!-- タブ 1: タイマー ＆ 残高（実績連動） -->
     <!-- ============================================== -->
     <section id="tabTimer" class="space-y-4">
       
+      <!-- 表示日付セレクター -->
+      <div class="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-sm text-xs">
+        <span class="font-bold text-slate-600">表示中の日付：</span>
+        <div class="flex items-center gap-1.5">
+          <input type="date" id="timerDateSelect" onchange="fetchDashboardData()" class="border border-slate-300 rounded-lg px-2 py-1 text-slate-800 font-medium">
+          <button onclick="setTimerToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-bold">今日</button>
+        </div>
+      </div>
+
       <!-- 通常ゲーム残高カード -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
         <p class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（通常枠）</p>
@@ -43,8 +52,8 @@
           <span class="text-xl font-bold ml-1">分</span>
         </div>
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
-          <div>本日獲得: <span id="displayEarned" class="font-bold">--</span> 分</div>
-          <div>本日使用: <span id="displaySpent" class="font-bold">--</span> 分</div>
+          <div>この日獲得: <span id="displayEarned" class="font-bold">--</span> 分</div>
+          <div>この日使用: <span id="displaySpent" class="font-bold">--</span> 分</div>
           <div>週末プール: <span id="displayWeekend" class="font-bold">--</span> 分</div>
         </div>
       </div>
@@ -64,14 +73,14 @@
       <!-- 積算内訳カード -->
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
-          <span class="text-xs font-bold text-slate-700">📊 各時間の積算内訳</span>
-          <span class="text-[10px] text-slate-400">どうやって計算されたの？</span>
+          <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
+          <span class="text-[10px] text-slate-400">実績入力と完全連動</span>
         </div>
 
-        <!-- 本日獲得ゲーム時間（平日最大100分キャップ）の内訳 -->
+        <!-- 獲得内訳 -->
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
           <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
-            <span>本日獲得ゲーム時間（平日）</span>
+            <span>獲得ゲーム時間（平日合計）</span>
             <span id="breakdownTodayEarned">-- 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
@@ -148,11 +157,22 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 2: 今日のアクション入力（日次ログ） -->
+    <!-- タブ 2: 実績の入力（日付切替対応） -->
     <!-- ============================================== -->
     <section id="tabDaily" class="hidden space-y-4">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <h2 class="text-base font-bold text-slate-700 border-b pb-2">📝 きょうの がんばり入力</h2>
+        
+        <!-- 日付選択バー -->
+        <div class="border-b pb-3 space-y-1">
+          <div class="flex justify-between items-center">
+            <h2 class="text-base font-bold text-slate-700">📝 がんばり実績の入力</h2>
+            <button onclick="setDailyToday()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded font-bold">今日に戻す</button>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <span class="text-xs font-bold text-slate-500">登録日：</span>
+            <input type="date" id="dailyRecordDate" onchange="loadDailyRecordForSelectedDate()" class="border border-indigo-300 bg-indigo-50 text-indigo-900 rounded-lg p-1.5 text-sm font-bold flex-1">
+          </div>
+        </div>
 
         <!-- 起床時刻 -->
         <div>
@@ -188,8 +208,8 @@
           </div>
         </div>
 
-        <button id="saveDailyBtn" onclick="saveDailyActions()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md text-sm">
-          💾 きょうの記録をほぞんする
+        <button id="saveDailyBtn" onclick="saveDailyActions()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
+          💾 この日の記録を保存して残高に反映
         </button>
       </div>
     </section>
@@ -287,6 +307,14 @@
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx4cKXsDLzfI5CJn0_D2oNhLow4HUc50JueHuA-QxANDRsl_q-7CaVcqrlmpBc1O9IX/exec";
 
+    function getTodayYMD() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
     function switchTab(tab) {
       ["Timer", "Daily", "Schedule"].forEach(t => {
         const isTarget = t.toLowerCase() === tab;
@@ -299,12 +327,25 @@
         }
       });
       if (tab === "timer") fetchDashboardData();
+      if (tab === "daily") loadDailyRecordForSelectedDate();
       if (tab === "schedule" && currentSchedule.length === 0) fetchSavedSchedule();
     }
 
+    function setTimerToday() {
+      document.getElementById("timerDateSelect").value = getTodayYMD();
+      fetchDashboardData();
+    }
+
+    function setDailyToday() {
+      document.getElementById("dailyRecordDate").value = getTodayYMD();
+      loadDailyRecordForSelectedDate();
+    }
+
+    // ダッシュボード残高取得（選択された日付をクエリで送信）
     async function fetchDashboardData() {
+      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
-        const res = await fetch(GAS_API_URL);
+        const res = await fetch(`${GAS_API_URL}?date=${selDate}`);
         const json = await res.json();
         if (json.status === "success") {
           const d = json.data;
@@ -313,6 +354,7 @@
           document.getElementById("displaySpent").textContent = d.spent_today;
           document.getElementById("displayWeekend").textContent = d.weekend_pool;
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
+          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
 
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
@@ -327,6 +369,63 @@
         }
       } catch (e) {
         console.error("残高取得エラー:", e);
+      }
+    }
+
+    // 「実績の入力」：選択された日付の既存データを読み込み
+    async function loadDailyRecordForSelectedDate() {
+      const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=get_daily_record&date=${selDate}`);
+        const json = await res.json();
+        if (json.status === "success" && json.record) {
+          const r = json.record;
+          document.getElementById("wakeTimeInput").value = r.wake_time || "06:15";
+          document.getElementById("attendCheck").checked = r.attended;
+          document.getElementById("yuidoCheck").checked = r.yuido;
+          document.getElementById("hokenCountInput").value = r.hoken_count;
+          document.getElementById("hokenCarrySelect").value = r.hoken_carry || "週末";
+        }
+      } catch (e) {
+        console.error("日次レコード読込エラー:", e);
+      }
+    }
+
+    // 「実績の入力」：保存処理（指定日を送信し、完了後にタイマー・残高タブを同日表示にして残高更新）
+    async function saveDailyActions() {
+      const btn = document.getElementById("saveDailyBtn");
+      btn.disabled = true;
+      btn.textContent = "💾 ほぞん中...";
+
+      const targetDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
+      const payload = {
+        action: "update_daily",
+        target_date: targetDate,
+        wake_time: document.getElementById("wakeTimeInput").value,
+        attended: document.getElementById("attendCheck").checked,
+        yuido: document.getElementById("yuidoCheck").checked,
+        hoken_count: Number(document.getElementById("hokenCountInput").value) || 0,
+        hoken_carry: document.getElementById("hokenCarrySelect").value
+      };
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          alert(`${targetDate} の記録を保存し、残高を更新しました！`);
+          document.getElementById("timerDateSelect").value = targetDate;
+          switchTab("timer");
+        } else {
+          alert("更新に失敗しました: " + json.message);
+        }
+      } catch (e) {
+        alert("通信エラーが発生しました。");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "💾 この日の記録を保存して残高に反映";
       }
     }
 
@@ -417,41 +516,6 @@
         document.getElementById("startTimerBtn").disabled = false;
         document.getElementById("startTimerBtn").classList.remove("bg-slate-300");
         document.getElementById("stopTimerBtn").textContent = "⏹ おわる（保存）";
-      }
-    }
-
-    // 日次アクション保存
-    async function saveDailyActions() {
-      const btn = document.getElementById("saveDailyBtn");
-      btn.disabled = true;
-      btn.textContent = "💾 ほぞん中...";
-
-      const payload = {
-        action: "update_daily",
-        wake_time: document.getElementById("wakeTimeInput").value,
-        attended: document.getElementById("attendCheck").checked,
-        yuido: document.getElementById("yuidoCheck").checked,
-        hoken_count: Number(document.getElementById("hokenCountInput").value) || 0,
-        hoken_carry: document.getElementById("hokenCarrySelect").value
-      };
-
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.status === "success") {
-          alert("きょうの記録を更新しました！");
-          switchTab("timer");
-        } else {
-          alert("更新に失敗しました: " + json.message);
-        }
-      } catch (e) {
-        alert("通信エラーが発生しました。");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "💾 きょうの記録をほぞんする";
       }
     }
 
@@ -594,7 +658,6 @@
       td.textContent = `${badge}${item.subject || "ー"}`;
     }
 
-    // 積算内訳計算
     function calcGoalReward() {
       const gameSubjects = {};
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
@@ -676,6 +739,9 @@
     }
 
     window.addEventListener("DOMContentLoaded", () => {
+      const today = getTodayYMD();
+      document.getElementById("timerDateSelect").value = today;
+      document.getElementById("dailyRecordDate").value = today;
       fetchDashboardData();
       fetchSavedSchedule();
     });
