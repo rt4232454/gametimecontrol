@@ -52,7 +52,7 @@
       <!-- クリスタ専用残高カード（別枠） -->
       <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
         <div>
-          <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">いつ使ってもOK！</span>
+          <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">いつでも使ってOK！</span>
           <div class="text-sm font-bold mt-1">🎨 クリスタ専用のこり時間</div>
         </div>
         <div class="text-right">
@@ -148,13 +148,14 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録（OCR・タップ・内訳） -->
+    <!-- タブ 3: 時間割登録（常に最新データを保持・表示） -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
-      <div id="uploadSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
-        <label for="cameraInput" class="cursor-pointer block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl shadow-md text-base">
-          📷 じかんわりを さつえいする
+      <!-- 撮影ボタンエリア -->
+      <div id="uploadSection" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
+        <label for="cameraInput" class="cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm">
+          📷 新しいじかんわりを さつえい・更新する
         </label>
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
       </div>
@@ -170,14 +171,14 @@
         </div>
       </div>
 
-      <!-- 時間割グリッド・内訳確認 -->
-      <div id="reviewSection" class="hidden space-y-4">
+      <!-- 時間割グリッド・最新状態の確認・編集 -->
+      <div id="reviewSection" class="space-y-4">
         
         <!-- 積算内訳カード -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="border-b pb-2 flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700">見込み時間の積算内訳</span>
-            <span class="text-[11px] text-slate-400">🔴＝通常(40分) / 🔺＝クリスタ別枠(15分)</span>
+            <span class="text-[11px] text-slate-400">🔴＝通常 / 🔺＝クリスタ(1日15分)</span>
           </div>
 
           <!-- 通常ゲーム見込み -->
@@ -189,10 +190,13 @@
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
           </div>
 
-          <!-- クリスタ見込み（別枠・1教科15分） -->
+          <!-- クリスタ見込み（別枠・1日1つ以上で15分・週最大75分） -->
           <div class="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-amber-900">🎨 クリスタ専用時間 見込み（別枠）</span>
+              <div>
+                <span class="text-xs font-bold text-amber-900">🎨 クリスタ専用時間 見込み（別枠）</span>
+                <span class="text-[10px] text-amber-600 block sm:inline sm:ml-1">※1日15分・最大75分</span>
+              </div>
               <span class="text-lg font-black text-amber-600"><span id="crystaTotalMin">0</span> 分</span>
             </div>
             <div id="crystaBreakdownList" class="space-y-1 text-xs"></div>
@@ -202,7 +206,7 @@
         <!-- 時間割テーブル -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
-            <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 時間割（タップで切替）</h3>
+            <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 今週の時間割（タップで変更可）</h3>
             <span class="text-[10px] text-slate-500">空 ➔ 🔴(ゲーム) ➔ 🔺(クリスタ)</span>
           </div>
 
@@ -223,7 +227,7 @@
           </div>
 
           <button id="saveGoalBtn" onclick="saveGoals()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md text-sm mt-2">
-            🎯 これで今週の目標をけってい！
+            🎯 これで今週の目標をほぞん！
           </button>
         </div>
 
@@ -248,6 +252,7 @@
         }
       });
       if (tab === "timer") fetchDashboardData();
+      if (tab === "schedule" && currentSchedule.length === 0) fetchSavedSchedule();
     }
 
     async function fetchDashboardData() {
@@ -265,6 +270,32 @@
       } catch (e) {
         console.error("残高取得エラー:", e);
       }
+    }
+
+    async function fetchSavedSchedule() {
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=get_schedule`);
+        const json = await res.json();
+        if (json.status === "success" && json.schedule && json.schedule.length > 0) {
+          renderTable(json.schedule);
+        } else {
+          initBlankSchedule();
+        }
+      } catch (e) {
+        initBlankSchedule();
+      }
+    }
+
+    function initBlankSchedule() {
+      const periods = ["朝", "1", "2", "3", "4", "5", "6"];
+      const days = ["月", "火", "水", "木", "金"];
+      const blank = [];
+      periods.forEach(p => {
+        days.forEach(d => {
+          blank.push({ day: d, period: p, subject: "", mark: null });
+        });
+      });
+      renderTable(blank);
     }
 
     // タイマー
@@ -368,12 +399,10 @@
 
     // 時間割登録
     const cameraInput = document.getElementById("cameraInput");
-    const uploadSection = document.getElementById("uploadSection");
     const progressSection = document.getElementById("progressSection");
     const progressBar = document.getElementById("progressBar");
     const statusMessage = document.getElementById("statusMessage");
     const percentText = document.getElementById("percentText");
-    const reviewSection = document.getElementById("reviewSection");
     const tableBody = document.getElementById("tableBody");
     const gameTotalMin = document.getElementById("gameTotalMin");
     const crystaTotalMin = document.getElementById("crystaTotalMin");
@@ -391,7 +420,6 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      uploadSection.classList.add("hidden");
       progressSection.classList.remove("hidden");
       updateProgress(10, "写真を読み込んでいます...");
 
@@ -423,13 +451,11 @@
         setTimeout(() => {
           progressSection.classList.add("hidden");
           renderTable(json.schedule || []);
-          reviewSection.classList.remove("hidden");
         }, 400);
 
       } catch (err) {
         console.error(err);
         alert("読み取りに失敗しました。もう一度お試しください。");
-        uploadSection.classList.remove("hidden");
         progressSection.classList.add("hidden");
       }
     });
@@ -510,18 +536,20 @@
       td.textContent = `${badge}${item.subject || "ー"}`;
     }
 
-    // 積算内訳計算（通常ゲーム：40分＋ボーナス30分 / クリスタ別枠：15分）
+    // 積算内訳計算（クリスタは1日あたり△が1つ以上あれば15分・最大75分）
     function calcGoalReward() {
       const gameSubjects = {};
-      const crystaSubjects = {};
+      // 曜日ごとの△マーク存在チェック（月〜金）
+      const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
 
       currentSchedule.forEach(item => {
         if (!item.subject || !item.mark) return;
-        const subj = item.subject;
         if (item.mark === "circle") {
-          gameSubjects[subj] = (gameSubjects[subj] || 0) + 1;
+          gameSubjects[item.subject] = (gameSubjects[item.subject] || 0) + 1;
         } else if (item.mark === "triangle") {
-          crystaSubjects[subj] = (crystaSubjects[subj] || 0) + 1;
+          if (crystaDays[item.day]) {
+            crystaDays[item.day].push(item.subject);
+          }
         }
       });
 
@@ -543,20 +571,29 @@
       gameBreakdownList.appendChild(bonusRow);
       gameTotalMin.textContent = gTotal;
 
-      // 2. クリスタ内訳（別枠・1教科15分）
+      // 2. クリスタ内訳（1日あたり△が1つ以上あれば15分）
       crystaBreakdownList.innerHTML = "";
-      let cTotal = 0;
-      for (const [subj, count] of Object.entries(crystaSubjects)) {
-        cTotal += 15; // 15分に変更
-        const row = document.createElement("div");
-        row.className = "flex justify-between items-center text-amber-900";
-        row.innerHTML = `<span>🔺 ${subj} (${count}コマ宣言)</span><span class="font-bold text-amber-700">+15分</span>`;
-        crystaBreakdownList.appendChild(row);
-      }
-      if (cTotal === 0) {
+      let activeDaysCount = 0;
+
+      ["月", "火", "水", "木", "金"].forEach(d => {
+        const list = crystaDays[d];
+        if (list && list.length > 0) {
+          activeDaysCount++;
+          const row = document.createElement("div");
+          row.className = "flex justify-between items-center text-amber-900";
+          row.innerHTML = `
+            <span>🔺 ${d}曜日 (${list.join("・")})</span>
+            <span class="font-bold text-amber-700">+15分</span>
+          `;
+          crystaBreakdownList.appendChild(row);
+        }
+      });
+
+      const totalCrystaMin = activeDaysCount * 15; // 15分 × 最大5日 = 最大75分
+      if (activeDaysCount === 0) {
         crystaBreakdownList.innerHTML = `<span class="text-slate-400 text-[11px]">三角（クリスタ）の宣言はありません</span>`;
       }
-      crystaTotalMin.textContent = cTotal;
+      crystaTotalMin.textContent = totalCrystaMin;
     }
 
     async function saveGoals() {
@@ -572,17 +609,20 @@
             schedule: currentSchedule
           })
         });
-        alert("目標をとうろくしました！クリスタ時間（15分/教科）も別枠でストックされます 🎉");
+        alert("目標を最新情報でほぞんしました！いつでもこの画面で確認できます 🎉");
         switchTab("timer");
       } catch (e) {
         alert("保存に失敗しました。");
       } finally {
         btn.disabled = false;
-        btn.textContent = "🎯 これで今週の目標をけってい！";
+        btn.textContent = "🎯 これで今週の目標をほぞん！";
       }
     }
 
-    window.addEventListener("DOMContentLoaded", fetchDashboardData);
+    window.addEventListener("DOMContentLoaded", () => {
+      fetchDashboardData();
+      fetchSavedSchedule();
+    });
   </script>
 </body>
 </html>
