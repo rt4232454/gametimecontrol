@@ -106,15 +106,18 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <div class="bg-indigo-50/70 p-2 rounded-xl border border-indigo-100">
-            <span class="text-[11px] font-bold text-indigo-900 block">週末ボーナス</span>
-            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 (全出席で40分/教科)</span>
+        <!-- 週末ボーナスの実績内訳 -->
+        <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 text-xs space-y-1">
+          <div class="flex justify-between items-center font-bold text-indigo-900 border-b border-indigo-200/60 pb-1">
+            <span>週末ボーナス（実績確定分）</span>
+            <span class="text-sm font-black text-indigo-700"><span id="wbTotalDisplay">0</span> 分</span>
           </div>
-          <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
-            <span class="text-[11px] font-bold text-amber-900 block">クリスタ専用枠</span>
-            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△(登校で15分) + 保健室課題(15分)</span>
-          </div>
+          <div id="wbListContainer" class="space-y-1 pt-1 text-[11px]"></div>
+        </div>
+
+        <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100 text-xs">
+          <span class="text-[11px] font-bold text-amber-900 block">🎨 クリスタ専用枠</span>
+          <span class="text-[10px] text-amber-700 block mt-0.5">時間割△(登校実績で15分) + 保健室課題(15分)</span>
         </div>
       </div>
 
@@ -158,7 +161,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 2: 実績の入力（5教科チェックリスト完備） -->
+    <!-- タブ 2: 実績の入力（赤丸出席チェック完備） -->
     <!-- ============================================== -->
     <section id="tabDaily" class="hidden space-y-4">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -178,10 +181,23 @@
         <!-- 起床時刻 -->
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">⏰ 起きた時間（6:30までの残り分数・最大30分ゲット）</label>
-          <input type="time" id="wakeTimeInput" value="" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
+          <input type="time" id="wakeTimeInput" value="06:30" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
         </div>
 
-        <!-- 帰宅後お勉強（5教科すべてチェックで+60分） -->
+        <!-- 🔴 赤丸出席チェック欄（新設） -->
+        <div class="p-3.5 bg-red-50/70 rounded-xl border border-red-200 space-y-2">
+          <div class="flex justify-between items-center border-b border-red-200/60 pb-1.5">
+            <div>
+              <span class="text-xs sm:text-sm font-bold text-red-950 block">🔴 宣言した授業に出席できた？</span>
+              <span class="text-[10px] text-red-700">全コマ出席で週末ボーナス（40分/教科）確定</span>
+            </div>
+          </div>
+          <div id="redClassesList" class="space-y-1.5 text-xs">
+            <!-- JSで選択日の赤丸授業を動的に挿入 -->
+          </div>
+        </div>
+
+        <!-- 帰宅後お勉強 -->
         <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
           <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
             <div>
@@ -226,7 +242,7 @@
           <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日の通常ゲーム枠に加算されます。</span>
         </label>
 
-        <!-- 保健室特別課題（チェックボックス） -->
+        <!-- 保健室特別課題 -->
         <label class="flex flex-col p-3 bg-amber-50/80 rounded-xl border border-amber-200 cursor-pointer">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -276,7 +292,7 @@
 
           <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み</span>
+              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全出席時）</span>
               <span class="text-lg font-black text-indigo-600"><span id="gameTotalMin">0</span> 分</span>
             </div>
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
@@ -329,6 +345,9 @@
 
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx4cKXsDLzfI5CJn0_D2oNhLow4HUc50JueHuA-QxANDRsl_q-7CaVcqrlmpBc1O9IX/exec";
+
+    let currentSchedule = [];
+    let currentSavedRedAttendMap = {};
 
     function getTodayYMD() {
       const d = new Date();
@@ -384,6 +403,35 @@
       }
     }
 
+    // 選択された曜日の赤丸授業チェックボックスを描画
+    function renderRedClassesForSelectedDate(targetDayName, savedMap) {
+      const container = document.getElementById("redClassesList");
+      container.innerHTML = "";
+
+      const redClasses = currentSchedule.filter(item => item.day === targetDayName && item.mark === "circle" && item.subject);
+
+      if (redClasses.length === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400">※ この曜日（${targetDayName}）は赤丸（〇）宣言の授業はありません</span>`;
+        return;
+      }
+
+      redClasses.forEach(item => {
+        const key = `${item.day}_${item.period}_${item.subject}`;
+        const isChecked = savedMap && savedMap[key] === true;
+
+        const label = document.createElement("label");
+        label.className = "flex items-center justify-between p-2 bg-white rounded-lg border border-red-200 cursor-pointer hover:bg-red-50/50";
+        label.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <input type="checkbox" data-class-key="${key}" ${isChecked ? 'checked' : ''} class="w-4 h-4 text-red-600 rounded accent-red-500 red-class-check">
+            <span class="font-bold text-red-950">${item.period}限：${item.subject}</span>
+          </div>
+          <span class="text-[10px] text-red-600 font-bold bg-red-100/60 px-1.5 py-0.5 rounded">〇宣言</span>
+        `;
+        container.appendChild(label);
+      });
+    }
+
     async function fetchDashboardData() {
       const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
@@ -394,9 +442,31 @@
           document.getElementById("displayRemainingMin").textContent = d.remaining_time;
           document.getElementById("displayEarned").textContent = d.earned_today;
           document.getElementById("displaySpent").textContent = d.spent_today;
-          document.getElementById("displayWeekend").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : (d.weekend_pool || 0);
+          document.getElementById("displayWeekend").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
+          document.getElementById("wbTotalDisplay").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
+
+          const wbContainer = document.getElementById("wbListContainer");
+          wbContainer.innerHTML = "";
+          if (d.weekend_breakdown && d.weekend_breakdown.length > 0) {
+            d.weekend_breakdown.forEach(item => {
+              const row = document.createElement("div");
+              row.className = "flex justify-between items-center";
+              const isDone = item.status === "達成";
+              const countText = item.totalCount !== undefined ? `(${item.attendedCount}/${item.totalCount}コマ出席)` : "";
+              const badge = isDone 
+                ? `<span class="text-emerald-600 font-bold">✓ 達成</span>` 
+                : `<span class="text-slate-400">未達成</span>`;
+              row.innerHTML = `
+                <span class="${isDone ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} ${countText} ${badge}</span>
+                <span class="${isDone ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
+              `;
+              wbContainer.appendChild(row);
+            });
+          } else {
+            wbContainer.innerHTML = `<span class="text-slate-400">まだ時間割〇の達成実績はありません</span>`;
+          }
 
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
@@ -434,12 +504,22 @@
 
     async function loadDailyRecordForSelectedDate() {
       const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
+      
+      // 時間割がまだロードされていない場合は取得
+      if (currentSchedule.length === 0) {
+        await fetchSavedSchedule();
+      }
+
+      const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+      const dObj = new Date(selDate.replace(/-/g, "/"));
+      const targetDayName = dayNames[dObj.getDay()];
+
       try {
         const res = await fetch(`${GAS_API_URL}?action=get_daily_record&date=${selDate}`);
         const json = await res.json();
         if (json.status === "success" && json.record) {
           const r = json.record;
-          document.getElementById("wakeTimeInput").value = r.wake_time || "";
+          document.getElementById("wakeTimeInput").value = r.wake_time || "06:30";
           document.getElementById("chkKokugo").checked = r.study_kokugo;
           document.getElementById("chkSugaku").checked = r.study_sugaku;
           document.getElementById("chkRika").checked = r.study_rika;
@@ -447,7 +527,9 @@
           document.getElementById("chkEigo").checked = r.study_eigo;
           document.getElementById("yuidoCheck").checked = r.yuido;
           document.getElementById("hokenCheck").checked = r.hoken_done;
+          currentSavedRedAttendMap = r.red_attend_map || {};
           updateStudyStatus();
+          renderRedClassesForSelectedDate(targetDayName, currentSavedRedAttendMap);
         }
       } catch (e) {
         console.error("日次レコード読込エラー:", e);
@@ -460,17 +542,26 @@
       btn.textContent = "💾 ほぞん中...";
 
       const targetDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
+      
+      // 赤丸出席チェックの収集
+      const redAttendMap = Object.assign({}, currentSavedRedAttendMap);
+      document.querySelectorAll(".red-class-check").forEach(chk => {
+        const key = chk.getAttribute("data-class-key");
+        redAttendMap[key] = chk.checked;
+      });
+
       const payload = {
         action: "update_daily",
         target_date: targetDate,
-        wake_time: document.getElementById("wakeTimeInput").value,
+        wake_time: document.getElementById("wakeTimeInput").value || "06:30",
         study_kokugo: document.getElementById("chkKokugo").checked,
         study_sugaku: document.getElementById("chkSugaku").checked,
         study_rika: document.getElementById("chkRika").checked,
         study_shakai: document.getElementById("chkShakai").checked,
         study_eigo: document.getElementById("chkEigo").checked,
         yuido: document.getElementById("yuidoCheck").checked,
-        hoken_done: document.getElementById("hokenCheck").checked
+        hoken_done: document.getElementById("hokenCheck").checked,
+        red_attend_map: redAttendMap
       };
 
       try {
@@ -480,7 +571,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の記録を保存しました！\n（5教科全完了で+60分反映されます）`);
+          alert(`${targetDate} の実績を保存しました！\n（赤丸授業の出席実績も反映されました）`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
@@ -499,6 +590,7 @@
         const res = await fetch(`${GAS_API_URL}?action=get_schedule`);
         const json = await res.json();
         if (json.status === "success" && json.schedule && json.schedule.length > 0) {
+          currentSchedule = json.schedule;
           renderTable(json.schedule);
         } else {
           initBlankSchedule();
@@ -517,6 +609,7 @@
           blank.push({ day: d, period: p, subject: "", mark: null });
         });
       });
+      currentSchedule = blank;
       renderTable(blank);
     }
 
@@ -593,7 +686,6 @@
     const crystaTotalMin = document.getElementById("crystaTotalMin");
     const gameBreakdownList = document.getElementById("gameBreakdownList");
     const crystaBreakdownList = document.getElementById("crystaBreakdownList");
-    let currentSchedule = [];
 
     function updateProgress(percent, msg) {
       progressBar.style.width = percent + "%";
@@ -803,8 +895,9 @@
       const today = getTodayYMD();
       document.getElementById("timerDateSelect").value = today;
       document.getElementById("dailyRecordDate").value = today;
-      fetchDashboardData();
-      fetchSavedSchedule();
+      fetchSavedSchedule().then(() => {
+        fetchDashboardData();
+      });
     });
   </script>
 </body>
