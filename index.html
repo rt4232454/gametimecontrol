@@ -92,7 +92,7 @@
             <span id="bAttendMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
-            <span>📖 ゆい道（前日分）</span>
+            <span>📖 ゆい道（前日実施ボーナス）</span>
             <span id="bYuidoMin">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
@@ -186,11 +186,14 @@
           <span class="text-xs sm:text-sm font-bold text-slate-700">学校へ登校＆帰宅後のお勉強完了（＋60分）</span>
         </label>
 
-        <!-- ゆい道 -->
-        <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-          <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！（翌日＋10分）</span>
-        </label>
+        <!-- ゆい道（翌日反映である旨を明記） -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
+            <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！</span>
+          </label>
+          <p class="text-[11px] text-indigo-600 pl-8 font-medium">※がんばった分は「あす（翌日）」のゲーム時間に＋10分加算されます✨</p>
+        </div>
 
         <!-- 保健室特別課題 -->
         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
@@ -341,7 +344,7 @@
       loadDailyRecordForSelectedDate();
     }
 
-    // ダッシュボード残高取得（選択された日付をクエリで送信）
+    // ダッシュボード残高取得
     async function fetchDashboardData() {
       const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
@@ -372,7 +375,7 @@
       }
     }
 
-    // 「実績の入力」：選択された日付の既存データを読み込み
+    // 「実績の入力」：指定日の読込
     async function loadDailyRecordForSelectedDate() {
       const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
       try {
@@ -391,7 +394,7 @@
       }
     }
 
-    // 「実績の入力」：保存処理（指定日を送信し、完了後にタイマー・残高タブを同日表示にして残高更新）
+    // 「実績の入力」：保存処理
     async function saveDailyActions() {
       const btn = document.getElementById("saveDailyBtn");
       btn.disabled = true;
@@ -415,7 +418,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の記録を保存し、残高を更新しました！`);
+          alert(`${targetDate} の記録を保存しました！\n（ゆい道の実績は翌日の残高に+10分反映されます）`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
