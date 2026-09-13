@@ -63,7 +63,7 @@
         <div>
           <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">いつでも使ってOK！</span>
           <div class="text-sm font-bold mt-1">🎨 クリスタ専用のこり時間</div>
-          <span class="text-[10px] text-amber-100 block">※実績登録に応じて獲得（最大75分）</span>
+          <span class="text-[10px] text-amber-100 block">※時間割△＋保健室課題でストック</span>
         </div>
         <div class="text-right">
           <span id="displayCrystaRemaining" class="text-4xl font-black">--</span>
@@ -78,10 +78,10 @@
           <span class="text-[10px] text-slate-400">実績入力と完全連動</span>
         </div>
 
-        <!-- 獲得内訳 -->
+        <!-- 通常ゲーム獲得内訳（保健室課題は除外） -->
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
           <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
-            <span>獲得ゲーム時間（平日合計）</span>
+            <span>通常ゲーム獲得時間（平日合計）</span>
             <span id="breakdownTodayEarned">-- 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
@@ -99,10 +99,6 @@
             </div>
             <span id="bYuidoMin">+0分</span>
           </div>
-          <div class="flex justify-between text-slate-500 text-[11px]">
-            <span>🎨 保健室課題（当日利用分）</span>
-            <span id="bHokenTodayMin">+0分</span>
-          </div>
           <div id="bCapAlert" class="hidden text-[10px] text-rose-600 font-bold border-t border-slate-200 pt-1 text-right">
             ※ 平日上限（1日最大100分）が適用されています
           </div>
@@ -112,11 +108,11 @@
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div class="bg-indigo-50/70 p-2 rounded-xl border border-indigo-100">
             <span class="text-[11px] font-bold text-indigo-900 block">週末プール</span>
-            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 + 毎日登校 + 保健室持越</span>
+            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 (全出席達成で40分/教科)</span>
           </div>
           <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
-            <span class="text-[11px] font-bold text-amber-900 block">クリスタ枠</span>
-            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△宣言日の登校実績 (1日15分)</span>
+            <span class="text-[11px] font-bold text-amber-900 block">クリスタ専用枠</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△(登校で15分) + 保健室課題(15分)</span>
           </div>
         </div>
       </div>
@@ -196,23 +192,20 @@
             <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
             <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！</span>
           </div>
-          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日のゲーム時間に加算されます。</span>
+          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日の通常ゲーム時間に加算されます。</span>
         </label>
 
-        <!-- 保健室特別課題 -->
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-          <div class="text-xs sm:text-sm font-bold text-slate-700">🎨 保健室での図工・特別課題（1時間＝15分）</div>
-          <div class="flex items-center justify-between text-xs">
-            <span>取り組んだ回数：</span>
+        <!-- 保健室特別課題（クリスタ専用） -->
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-xs sm:text-sm font-bold text-amber-900">🎨 保健室での図工・特別課題</span>
+            <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">クリスタ専用枠</span>
+          </div>
+          <div class="flex items-center justify-between text-xs pt-1">
+            <span class="text-slate-700">取り組んだ回数（1回＝15分）：</span>
             <input type="number" id="hokenCountInput" min="0" max="5" value="0" class="w-16 border border-slate-300 rounded p-1 text-center font-bold">
           </div>
-          <div class="flex items-center justify-between text-xs">
-            <span>使いみち：</span>
-            <select id="hokenCarrySelect" class="border border-slate-300 rounded p-1 bg-white font-medium">
-              <option value="週末">土日にためる</option>
-              <option value="当日">きょう使う</option>
-            </select>
-          </div>
+          <span class="text-[10px] text-amber-700 block mt-1">※ 通常のゲーム枠には入らず、クリスタ専用時間として貯まります。</span>
         </div>
 
         <button id="saveDailyBtn" onclick="saveDailyActions()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
@@ -226,7 +219,6 @@
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
-      <!-- 撮影ボタンエリア -->
       <div id="uploadSection" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
         <label for="cameraInput" class="cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm">
           📷 新しいじかんわりを さつえい・更新する
@@ -269,7 +261,7 @@
             <div class="flex justify-between items-center mb-1.5">
               <div>
                 <span class="text-xs font-bold text-amber-900">🎨 クリスタ専用時間 見込み（別枠）</span>
-                <span class="text-[10px] text-amber-600 block sm:inline sm:ml-1">※1日15分・最大75分</span>
+                <span class="text-[10px] text-amber-600 block sm:inline sm:ml-1">※時間割△(最大75分) ＋ 保健室課題</span>
               </div>
               <span class="text-lg font-black text-amber-600"><span id="crystaTotalMin">0</span> 分</span>
             </div>
@@ -369,7 +361,6 @@
             document.getElementById("bWakeMin").textContent = `+${b.wakeMin}分`;
             document.getElementById("bAttendMin").textContent = `+${b.attendMin}分`;
             document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin}分`;
-            document.getElementById("bHokenTodayMin").textContent = `+${b.hokenTodayMin}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
             document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
           }
@@ -390,7 +381,6 @@
           document.getElementById("attendCheck").checked = r.attended;
           document.getElementById("yuidoCheck").checked = r.yuido;
           document.getElementById("hokenCountInput").value = r.hoken_count;
-          document.getElementById("hokenCarrySelect").value = r.hoken_carry || "週末";
         }
       } catch (e) {
         console.error("日次レコード読込エラー:", e);
@@ -409,8 +399,7 @@
         wake_time: document.getElementById("wakeTimeInput").value,
         attended: document.getElementById("attendCheck").checked,
         yuido: document.getElementById("yuidoCheck").checked,
-        hoken_count: Number(document.getElementById("hokenCountInput").value) || 0,
-        hoken_carry: document.getElementById("hokenCarrySelect").value
+        hoken_count: Number(document.getElementById("hokenCountInput").value) || 0
       };
 
       try {
@@ -420,7 +409,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の記録を保存しました！\n（ゆい道は翌日の残高に加算されます）`);
+          alert(`${targetDate} の記録を保存しました！\n（保健室課題はクリスタ枠に加算され、ゆい道は翌日の通常ゲーム枠に加算されます）`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
@@ -703,7 +692,7 @@
           row.className = "flex justify-between items-center text-amber-900";
           row.innerHTML = `
             <span>🔺 ${d}曜日 (${list.join("・")})</span>
-            <span class="font-bold text-amber-700">+15分(登校達成時)</span>
+            <span class="font-bold text-amber-700">+15分(登校時)</span>
           `;
           crystaBreakdownList.appendChild(row);
         }
