@@ -31,7 +31,7 @@
   <main class="max-w-md mx-auto p-4 space-y-4">
 
     <!-- ============================================== -->
-    <!-- タブ 1: タイマー ＆ 残高（通常ゲーム ＋ クリスタ別枠） -->
+    <!-- タブ 1: タイマー ＆ 残高（積算内訳の可視化付き） -->
     <!-- ============================================== -->
     <section id="tabTimer" class="space-y-4">
       
@@ -58,6 +58,53 @@
         <div class="text-right">
           <span id="displayCrystaRemaining" class="text-4xl font-black">--</span>
           <span class="text-base font-bold ml-0.5">分</span>
+        </div>
+      </div>
+
+      <!-- 積算内訳カード（新設） -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <span class="text-xs font-bold text-slate-700">📊 各時間の積算内訳</span>
+          <span class="text-[10px] text-slate-400">どうやって計算されたの？</span>
+        </div>
+
+        <!-- 本日獲得ゲーム時間（平日最大100分キャップ）の内訳 -->
+        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
+          <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
+            <span>本日獲得ゲーム時間（平日）</span>
+            <span id="breakdownTodayEarned">-- 分</span>
+          </div>
+          <div class="flex justify-between text-slate-500 text-[11px] pt-1">
+            <span>⏰ 起床時間 (<span id="bWakeTime">--</span>)</span>
+            <span id="bWakeMin">+0分</span>
+          </div>
+          <div class="flex justify-between text-slate-500 text-[11px]">
+            <span>🏫 登校＆帰宅後勉強完了</span>
+            <span id="bAttendMin">+0分</span>
+          </div>
+          <div class="flex justify-between text-slate-500 text-[11px]">
+            <span>📖 ゆい道（前日分）</span>
+            <span id="bYuidoMin">+0分</span>
+          </div>
+          <div class="flex justify-between text-slate-500 text-[11px]">
+            <span>🎨 保健室課題（当日利用分）</span>
+            <span id="bHokenTodayMin">+0分</span>
+          </div>
+          <div id="bCapAlert" class="hidden text-[10px] text-rose-600 font-bold border-t border-slate-200 pt-1 text-right">
+            ※ 平日上限（1日最大100分）が適用されています
+          </div>
+        </div>
+
+        <!-- 週末ゲームプール・クリスタの根拠 -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-indigo-50/70 p-2 rounded-xl border border-indigo-100">
+            <span class="text-[11px] font-bold text-indigo-900 block">週末プール</span>
+            <span class="text-[10px] text-indigo-600 block mt-0.5">時間割〇宣言 + 毎日登校 + 保健室持越</span>
+          </div>
+          <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100">
+            <span class="text-[11px] font-bold text-amber-900 block">クリスタ枠</span>
+            <span class="text-[10px] text-amber-600 block mt-0.5">時間割△宣言 (1日15分×最大5日)</span>
+          </div>
         </div>
       </div>
 
@@ -152,7 +199,6 @@
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
-      <!-- 撮影ボタンエリア -->
       <div id="uploadSection" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
         <label for="cameraInput" class="cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm">
           📷 新しいじかんわりを さつえい・更新する
@@ -266,6 +312,18 @@
           document.getElementById("displaySpent").textContent = d.spent_today;
           document.getElementById("displayWeekend").textContent = d.weekend_pool;
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
+
+          // 本日獲得の内訳表示を更新
+          if (d.daily_breakdown) {
+            const b = d.daily_breakdown;
+            document.getElementById("breakdownTodayEarned").textContent = `${d.earned_today} 分`;
+            document.getElementById("bWakeTime").textContent = b.wakeTime;
+            document.getElementById("bWakeMin").textContent = `+${b.wakeMin}分`;
+            document.getElementById("bAttendMin").textContent = `+${b.attendMin}分`;
+            document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin}分`;
+            document.getElementById("bHokenTodayMin").textContent = `+${b.hokenTodayMin}分`;
+            document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
+          }
         }
       } catch (e) {
         console.error("残高取得エラー:", e);
@@ -536,10 +594,9 @@
       td.textContent = `${badge}${item.subject || "ー"}`;
     }
 
-    // 積算内訳計算（クリスタは1日あたり△が1つ以上あれば15分・最大75分）
+    // 積算内訳計算
     function calcGoalReward() {
       const gameSubjects = {};
-      // 曜日ごとの△マーク存在チェック（月〜金）
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
 
       currentSchedule.forEach(item => {
@@ -553,7 +610,7 @@
         }
       });
 
-      // 1. 通常ゲーム内訳（全出席で40分）
+      // 通常ゲーム
       gameBreakdownList.innerHTML = "";
       let gTotal = 0;
       for (const [subj, count] of Object.entries(gameSubjects)) {
@@ -563,7 +620,6 @@
         row.innerHTML = `<span>🔴 ${subj} (${count}コマ全出席)</span><span class="font-bold text-indigo-700">+40分</span>`;
         gameBreakdownList.appendChild(row);
       }
-      // 連続登校ボーナス（+30分）
       gTotal += 30;
       const bonusRow = document.createElement("div");
       bonusRow.className = "flex justify-between items-center text-indigo-800 font-bold border-t border-indigo-100 pt-1";
@@ -571,7 +627,7 @@
       gameBreakdownList.appendChild(bonusRow);
       gameTotalMin.textContent = gTotal;
 
-      // 2. クリスタ内訳（1日あたり△が1つ以上あれば15分）
+      // クリスタ
       crystaBreakdownList.innerHTML = "";
       let activeDaysCount = 0;
 
@@ -589,7 +645,7 @@
         }
       });
 
-      const totalCrystaMin = activeDaysCount * 15; // 15分 × 最大5日 = 最大75分
+      const totalCrystaMin = activeDaysCount * 15;
       if (activeDaysCount === 0) {
         crystaBreakdownList.innerHTML = `<span class="text-slate-400 text-[11px]">三角（クリスタ）の宣言はありません</span>`;
       }
