@@ -9,6 +9,13 @@
     .cell-circle { background-color: #fee2e2; border-color: #ef4444; }
     .cell-triangle { background-color: #fef3c7; border-color: #f59e0b; }
     .tab-active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: bold; }
+    @keyframes pulse-red {
+      0%, 100% { background-color: #fee2e2; }
+      50% { background-color: #fca5a5; }
+    }
+    .timer-alert-active {
+      animation: pulse-red 1s infinite;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-16">
@@ -52,7 +59,7 @@
           <span class="text-xl font-bold ml-1">分</span>
         </div>
         
-        <!-- 超過アラート（獲得時間以上に遊んでしまった場合） -->
+        <!-- 超過アラート -->
         <div id="overLimitAlert" class="hidden bg-rose-500/90 text-white text-xs font-bold py-1 px-3 rounded-lg my-2 inline-block">
           ⚠️ 本日の獲得枠を <span id="overMinutesText">0</span> 分 超過しています
         </div>
@@ -127,8 +134,9 @@
         </div>
       </div>
 
-      <!-- タイマー操作カード -->
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3">
+      <!-- タイマー操作カード（残高ゼロ時ガード機能付き） -->
+      <div id="timerCardBox" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3 transition-colors">
+        
         <div class="flex items-center justify-center gap-2">
           <span class="text-xs font-bold text-slate-500">タイマーモード：</span>
           <select id="playTypeSelect" onchange="changeTimerType()" class="border border-indigo-300 bg-indigo-50 text-indigo-800 font-bold rounded-lg px-2.5 py-1 text-xs">
@@ -136,9 +144,20 @@
             <option value="クリスタ">🎨 クリスタ（お絵描き）</option>
           </select>
         </div>
-        
-        <div class="text-5xl font-mono font-black text-slate-800 tracking-wider" id="timerDisplay">
-          00:00
+
+        <!-- アラーム発生中バナー -->
+        <div id="alarmBanner" class="hidden bg-rose-600 text-white font-bold py-2 px-3 rounded-xl text-xs sm:text-sm animate-bounce shadow-md">
+          🔔 持ち時間が終了しました！ゲーム・クリスタをおしまいにしよう！
+        </div>
+
+        <!-- タイマー表示 -->
+        <div class="space-y-1">
+          <div class="text-5xl font-mono font-black text-slate-800 tracking-wider" id="timerDisplay">
+            00:00
+          </div>
+          <div class="text-xs text-slate-500 font-medium">
+            持ち時間のこり：<span id="timerCountdownDisplay" class="font-bold text-indigo-600">--:--</span>
+          </div>
         </div>
 
         <div class="text-xs text-slate-400">
@@ -152,18 +171,22 @@
         </div>
 
         <div class="flex gap-2 justify-center pt-2">
-          <button id="startTimerBtn" onclick="startTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-sm text-sm">
+          <button id="startTimerBtn" onclick="startTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm">
             ▶ スタート
           </button>
-          <button id="stopTimerBtn" onclick="stopTimer()" disabled class="flex-1 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300 text-white font-bold py-3 px-4 rounded-xl shadow-sm text-sm">
+          <button id="stopTimerBtn" onclick="stopTimer()" disabled class="flex-1 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm">
             ⏹ おわる（保存）
           </button>
         </div>
 
-        <!-- プレイ記録のリセットボタン（テスト等の修正用） -->
-        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
-          <span>※ テスト等で記録したプレイ時間を消す場合：</span>
-          <button onclick="resetTodayPlayLog()" class="text-rose-600 hover:text-rose-700 underline font-bold">この日の利用時間をリセット</button>
+        <!-- 残高不足時の注意メッセージ -->
+        <p id="noBalanceNote" class="hidden text-xs text-rose-500 font-bold">
+          ⚠️ あそべる時間（残高）がありません。お勉強や目標を達成して時間をゲットしてね！
+        </p>
+
+        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
+          <span>※ スリープ中も計測は正確に継続します</span>
+          <button onclick="resetTodayPlayLog()" class="text-rose-600 hover:text-rose-700 underline font-bold">今日の利用時間をリセット</button>
         </div>
       </div>
 
@@ -301,7 +324,7 @@
 
           <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全達成時）</span>
+              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全出席時）</span>
               <span class="text-lg font-black text-indigo-600"><span id="gameTotalMin">0</span> 分</span>
             </div>
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
@@ -357,6 +380,16 @@
 
     let currentSchedule = [];
     let currentSavedRedAttendMap = {};
+    let latestRemainingGameMin = 0;
+    let latestRemainingCrystaMin = 0;
+
+    let timerInterval = null;
+    let timerStartTime = null;
+    let timerInitialRemainingSec = 0;
+    let timerElapsedSec = 0;
+    let wakeLockSentinel = null;
+    let audioCtx = null;
+    let alarmInterval = null;
 
     function getTodayYMD() {
       const d = new Date();
@@ -447,15 +480,19 @@
         const json = await res.json();
         if (json.status === "success") {
           const d = json.data;
-          document.getElementById("displayRemainingMin").textContent = d.remaining_time;
+          latestRemainingGameMin = d.remaining_time || 0;
+          latestRemainingCrystaMin = d.crysta_remaining || 0;
+
+          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
           document.getElementById("displayEarned").textContent = d.earned_today;
           document.getElementById("displaySpent").textContent = d.spent_today;
           document.getElementById("displayWeekend").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
           document.getElementById("wbTotalDisplay").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
-          document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
+          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
 
-          // 超過利用のアラート表示
+          updateInitialCountdownDisplay();
+
           const overAlert = document.getElementById("overLimitAlert");
           if (d.raw_diff !== undefined && d.raw_diff < 0) {
             document.getElementById("overMinutesText").textContent = Math.abs(d.raw_diff);
@@ -519,6 +556,246 @@
       }
     }
 
+    // カウントダウン表示 ＆ 残高ゼロ時のスタートボタン制御
+    function updateInitialCountdownDisplay() {
+      if (timerStartTime) return; // 計測中は更新しない
+
+      const isCrysta = document.getElementById("playTypeSelect").value === "クリスタ";
+      const totalMin = isCrysta ? latestRemainingCrystaMin : latestRemainingGameMin;
+      const mm = String(totalMin).padStart(2, "0");
+      document.getElementById("timerCountdownDisplay").textContent = `${mm}:00`;
+
+      const startBtn = document.getElementById("startTimerBtn");
+      const noBalanceNote = document.getElementById("noBalanceNote");
+
+      // 残高があるときのみスタート可能
+      if (totalMin > 0) {
+        startBtn.disabled = false;
+        startBtn.classList.remove("bg-slate-300", "cursor-not-allowed");
+        startBtn.classList.add("bg-emerald-500", "hover:bg-emerald-600");
+        startBtn.textContent = "▶ スタート";
+        noBalanceNote.classList.add("hidden");
+      } else {
+        startBtn.disabled = true;
+        startBtn.classList.remove("bg-emerald-500", "hover:bg-emerald-600");
+        startBtn.classList.add("bg-slate-300", "cursor-not-allowed");
+        startBtn.textContent = "残り時間がありません (0分)";
+        noBalanceNote.classList.remove("hidden");
+      }
+    }
+
+    function changeTimerType() {
+      const type = document.getElementById("playTypeSelect").value;
+      if (type === "クリスタ") {
+        document.getElementById("playDevice").value = "iPad";
+      }
+      updateInitialCountdownDisplay();
+    }
+
+    // ========================================================
+    // ⏱️ タイマー＆アラーム（残高ガード付き）
+    // ========================================================
+    function startTimer() {
+      const isCrysta = document.getElementById("playTypeSelect").value === "クリスタ";
+      const targetRemainMin = isCrysta ? latestRemainingCrystaMin : latestRemainingGameMin;
+
+      // ガード処理: 残高が0以下のときは絶対にスタートさせない
+      if (targetRemainMin <= 0) {
+        alert("あそべる時間（残高）がありません。\nきょうの目標やお勉強を達成して時間をゲットしてね！");
+        return;
+      }
+
+      try {
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtxClass) {
+          audioCtx = new AudioCtxClass();
+          if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+          }
+        }
+      } catch (e) {
+        console.log("AudioContext init error:", e);
+      }
+
+      requestWakeLock();
+
+      timerInitialRemainingSec = targetRemainMin * 60;
+      timerStartTime = Date.now();
+      timerElapsedSec = 0;
+
+      document.getElementById("startTimerBtn").disabled = true;
+      document.getElementById("startTimerBtn").classList.add("bg-slate-300");
+      document.getElementById("stopTimerBtn").disabled = false;
+      document.getElementById("alarmBanner").classList.add("hidden");
+      document.getElementById("timerCardBox").classList.remove("timer-alert-active");
+
+      timerInterval = setInterval(syncTimerTick, 1000);
+      syncTimerTick();
+    }
+
+    function syncTimerTick() {
+      if (!timerStartTime) return;
+
+      const now = Date.now();
+      timerElapsedSec = Math.floor((now - timerStartTime) / 1000);
+
+      const eMins = String(Math.floor(timerElapsedSec / 60)).padStart(2, "0");
+      const eSecs = String(timerElapsedSec % 60).padStart(2, "0");
+      document.getElementById("timerDisplay").textContent = `${eMins}:${eSecs}`;
+
+      const remainingSec = timerInitialRemainingSec - timerElapsedSec;
+      if (remainingSec > 0) {
+        const rMins = String(Math.floor(remainingSec / 60)).padStart(2, "0");
+        const rSecs = String(remainingSec % 60).padStart(2, "0");
+        document.getElementById("timerCountdownDisplay").textContent = `${rMins}:${rSecs}`;
+      } else {
+        document.getElementById("timerCountdownDisplay").textContent = "00:00 (時間終了！)";
+        triggerAlarm();
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && timerStartTime) {
+        syncTimerTick();
+        requestWakeLock();
+      }
+    });
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator && !wakeLockSentinel) {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          wakeLockSentinel.addEventListener('release', () => {
+            wakeLockSentinel = null;
+          });
+        }
+      } catch (err) {
+        console.log("WakeLock error:", err);
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
+      }
+    }
+
+    function triggerAlarm() {
+      if (alarmInterval) return;
+
+      document.getElementById("alarmBanner").classList.remove("hidden");
+      document.getElementById("timerCardBox").classList.add("timer-alert-active");
+
+      playBeepSequence();
+      alarmInterval = setInterval(playBeepSequence, 2000);
+    }
+
+    function playBeepSequence() {
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 400]);
+      }
+
+      if (!audioCtx) return;
+      try {
+        const playTone = (freq, startTime, duration) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startTime);
+          gain.gain.setValueAtTime(0.15, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+
+        const now = audioCtx.currentTime;
+        playTone(880, now, 0.12);
+        playTone(880, now + 0.15, 0.12);
+        playTone(880, now + 0.30, 0.12);
+        playTone(1174, now + 0.45, 0.25);
+      } catch (e) {
+        console.log("Beep error:", e);
+      }
+    }
+
+    function stopAlarm() {
+      if (alarmInterval) {
+        clearInterval(alarmInterval);
+        alarmInterval = null;
+      }
+      document.getElementById("alarmBanner").classList.add("hidden");
+      document.getElementById("timerCardBox").classList.remove("timer-alert-active");
+    }
+
+    async function stopTimer() {
+      if (!timerStartTime) return;
+
+      const spentMins = Math.max(1, Math.round(timerElapsedSec / 60));
+      const playType = document.getElementById("playTypeSelect").value;
+      const device = document.getElementById("playDevice").value;
+      const startIso = new Date(timerStartTime).toISOString();
+      const endIso = new Date().toISOString();
+
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerStartTime = null;
+      stopAlarm();
+      releaseWakeLock();
+
+      document.getElementById("stopTimerBtn").disabled = true;
+      document.getElementById("stopTimerBtn").textContent = "記録中...";
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "log_play",
+            start_time: startIso,
+            end_time: endIso,
+            spent_minutes: spentMins,
+            play_type: playType,
+            device: device
+          })
+        });
+        alert(`${playType} おつかれさま！ ${spentMins} 分 利用したよ。`);
+        fetchDashboardData();
+      } catch (e) {
+        alert("利用時間の保存に失敗しました。");
+      } finally {
+        document.getElementById("timerDisplay").textContent = "00:00";
+        document.getElementById("stopTimerBtn").textContent = "⏹ おわる（保存）";
+        updateInitialCountdownDisplay();
+      }
+    }
+
+    async function resetTodayPlayLog() {
+      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
+      if (!confirm(`${selDate} の利用時間（タイマー履歴）をリセットして0分に戻しますか？`)) return;
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "clear_today_play",
+            target_date: selDate
+          })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          alert("利用時間をリセットしました！");
+          fetchDashboardData();
+        }
+      } catch (e) {
+        alert("リセットに失敗しました。");
+      }
+    }
+
+    // ========================================================
+    // 📝 実績の入力 ＆ 📅 時間割とうろく
+    // ========================================================
     async function loadDailyRecordForSelectedDate() {
       const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
       
@@ -600,29 +877,6 @@
       }
     }
 
-    // プレイ履歴のリセット（テスト利用分等の取り消し）
-    async function resetTodayPlayLog() {
-      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
-      if (!confirm(`${selDate} の利用時間（タイマー履歴）をリセットして0分に戻しますか？`)) return;
-
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "clear_today_play",
-            target_date: selDate
-          })
-        });
-        const json = await res.json();
-        if (json.status === "success") {
-          alert("利用時間をリセットしました！");
-          fetchDashboardData();
-        }
-      } catch (e) {
-        alert("リセットに失敗しました。");
-      }
-    }
-
     async function fetchSavedSchedule() {
       try {
         const res = await fetch(`${GAS_API_URL}?action=get_schedule`);
@@ -649,69 +903,6 @@
       });
       currentSchedule = blank;
       renderTable(blank);
-    }
-
-    let timerInterval = null;
-    let timerSeconds = 0;
-    let timerStartTime = null;
-
-    function changeTimerType() {
-      const type = document.getElementById("playTypeSelect").value;
-      if (type === "クリスタ") {
-        document.getElementById("playDevice").value = "iPad";
-      }
-    }
-
-    function startTimer() {
-      timerStartTime = new Date();
-      timerSeconds = 0;
-      document.getElementById("startTimerBtn").disabled = true;
-      document.getElementById("startTimerBtn").classList.add("bg-slate-300");
-      document.getElementById("stopTimerBtn").disabled = false;
-
-      timerInterval = setInterval(() => {
-        timerSeconds++;
-        const mins = String(Math.floor(timerSeconds / 60)).padStart(2, "0");
-        const secs = String(timerSeconds % 60).padStart(2, "0");
-        document.getElementById("timerDisplay").textContent = `${mins}:${secs}`;
-      }, 1000);
-    }
-
-    async function stopTimer() {
-      if (!timerInterval) return;
-      clearInterval(timerInterval);
-      timerInterval = null;
-
-      const timerEndTime = new Date();
-      const spentMins = Math.max(1, Math.round(timerSeconds / 60));
-      const playType = document.getElementById("playTypeSelect").value;
-      const device = document.getElementById("playDevice").value;
-
-      document.getElementById("stopTimerBtn").disabled = true;
-      document.getElementById("stopTimerBtn").textContent = "記録中...";
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "log_play",
-            start_time: timerStartTime.toISOString(),
-            end_time: timerEndTime.toISOString(),
-            spent_minutes: spentMins,
-            play_type: playType,
-            device: device
-          })
-        });
-        alert(`${playType} おつかれさま！ ${spentMins} 分 利用したよ。`);
-        fetchDashboardData();
-      } catch (e) {
-        alert("利用時間の保存に失敗しました。");
-      } finally {
-        document.getElementById("timerDisplay").textContent = "00:00";
-        document.getElementById("startTimerBtn").disabled = false;
-        document.getElementById("startTimerBtn").classList.remove("bg-slate-300");
-        document.getElementById("stopTimerBtn").textContent = "⏹ おわる（保存）";
-      }
     }
 
     const cameraInput = document.getElementById("cameraInput");
