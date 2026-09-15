@@ -44,13 +44,19 @@
         </div>
       </div>
 
-      <!-- 通常ゲーム残高カード（当日限り使い切り） -->
+      <!-- 通常ゲーム残高カード -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
         <p class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（当日限り有効）</p>
         <div class="my-1">
           <span id="displayRemainingMin" class="text-5xl font-black">0</span>
           <span class="text-xl font-bold ml-1">分</span>
         </div>
+        
+        <!-- 超過アラート（獲得時間以上に遊んでしまった場合） -->
+        <div id="overLimitAlert" class="hidden bg-rose-500/90 text-white text-xs font-bold py-1 px-3 rounded-lg my-2 inline-block">
+          ⚠️ 本日の獲得枠を <span id="overMinutesText">0</span> 分 超過しています
+        </div>
+
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
           <div>この日獲得: <span id="displayEarned" class="font-bold">0</span> 分</div>
           <div>この日使用: <span id="displaySpent" class="font-bold">0</span> 分</div>
@@ -153,6 +159,12 @@
             ⏹ おわる（保存）
           </button>
         </div>
+
+        <!-- プレイ記録のリセットボタン（テスト等の修正用） -->
+        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
+          <span>※ テスト等で記録したプレイ時間を消す場合：</span>
+          <button onclick="resetTodayPlayLog()" class="text-rose-600 hover:text-rose-700 underline font-bold">この日の利用時間をリセット</button>
+        </div>
       </div>
 
       <div class="text-center">
@@ -161,12 +173,11 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 2: 実績の入力（赤丸出席チェック完備） -->
+    <!-- タブ 2: 実績の入力 -->
     <!-- ============================================== -->
     <section id="tabDaily" class="hidden space-y-4">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
         
-        <!-- 日付選択バー -->
         <div class="border-b pb-3 space-y-1">
           <div class="flex justify-between items-center">
             <h2 class="text-base font-bold text-slate-700">📝 がんばり実績の入力</h2>
@@ -184,7 +195,7 @@
           <input type="time" id="wakeTimeInput" value="06:30" class="w-full border border-slate-300 rounded-lg p-2 text-base font-medium">
         </div>
 
-        <!-- 🔴 赤丸出席チェック欄（新設） -->
+        <!-- 🔴 赤丸出席チェック欄 -->
         <div class="p-3.5 bg-red-50/70 rounded-xl border border-red-200 space-y-2">
           <div class="flex justify-between items-center border-b border-red-200/60 pb-1.5">
             <div>
@@ -192,9 +203,7 @@
               <span class="text-[10px] text-red-700">全コマ出席で週末ボーナス（40分/教科）確定</span>
             </div>
           </div>
-          <div id="redClassesList" class="space-y-1.5 text-xs">
-            <!-- JSで選択日の赤丸授業を動的に挿入 -->
-          </div>
+          <div id="redClassesList" class="space-y-1.5 text-xs"></div>
         </div>
 
         <!-- 帰宅後お勉強 -->
@@ -292,7 +301,7 @@
 
           <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
             <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全出席時）</span>
+              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全達成時）</span>
               <span class="text-lg font-black text-indigo-600"><span id="gameTotalMin">0</span> 分</span>
             </div>
             <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
@@ -370,7 +379,7 @@
       });
       if (tab === "timer") fetchDashboardData();
       if (tab === "daily") loadDailyRecordForSelectedDate();
-      if (tab === "schedule" && currentSchedule.length === 0) fetchSavedSchedule();
+      if (tab === "schedule") fetchSavedSchedule();
     }
 
     function setTimerToday() {
@@ -403,7 +412,6 @@
       }
     }
 
-    // 選択された曜日の赤丸授業チェックボックスを描画
     function renderRedClassesForSelectedDate(targetDayName, savedMap) {
       const container = document.getElementById("redClassesList");
       container.innerHTML = "";
@@ -446,6 +454,15 @@
           document.getElementById("wbTotalDisplay").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
           document.getElementById("displayCrystaRemaining").textContent = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
+
+          // 超過利用のアラート表示
+          const overAlert = document.getElementById("overLimitAlert");
+          if (d.raw_diff !== undefined && d.raw_diff < 0) {
+            document.getElementById("overMinutesText").textContent = Math.abs(d.raw_diff);
+            overAlert.classList.remove("hidden");
+          } else {
+            overAlert.classList.add("hidden");
+          }
 
           const wbContainer = document.getElementById("wbListContainer");
           wbContainer.innerHTML = "";
@@ -505,7 +522,6 @@
     async function loadDailyRecordForSelectedDate() {
       const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
       
-      // 時間割がまだロードされていない場合は取得
       if (currentSchedule.length === 0) {
         await fetchSavedSchedule();
       }
@@ -543,7 +559,6 @@
 
       const targetDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
       
-      // 赤丸出席チェックの収集
       const redAttendMap = Object.assign({}, currentSavedRedAttendMap);
       document.querySelectorAll(".red-class-check").forEach(chk => {
         const key = chk.getAttribute("data-class-key");
@@ -571,7 +586,7 @@
         });
         const json = await res.json();
         if (json.status === "success") {
-          alert(`${targetDate} の実績を保存しました！\n（赤丸授業の出席実績も反映されました）`);
+          alert(`${targetDate} の実績を保存しました！`);
           document.getElementById("timerDateSelect").value = targetDate;
           switchTab("timer");
         } else {
@@ -582,6 +597,29 @@
       } finally {
         btn.disabled = false;
         btn.textContent = "💾 この日の記録を保存して残高に反映";
+      }
+    }
+
+    // プレイ履歴のリセット（テスト利用分等の取り消し）
+    async function resetTodayPlayLog() {
+      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
+      if (!confirm(`${selDate} の利用時間（タイマー履歴）をリセットして0分に戻しますか？`)) return;
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "clear_today_play",
+            target_date: selDate
+          })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+          alert("利用時間をリセットしました！");
+          fetchDashboardData();
+        }
+      } catch (e) {
+        alert("リセットに失敗しました。");
       }
     }
 
