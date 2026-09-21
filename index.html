@@ -51,9 +51,9 @@
         </div>
       </div>
 
-      <!-- 通常ゲーム残高カード -->
+      <!-- 通常ゲーム残高カード（連休・週末ボーナス対応） -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
-        <p id="timerCardTitle" class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（当日限り有効）</p>
+        <p id="timerCardTitle" class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間</p>
         <div class="my-1">
           <span id="displayRemainingMin" class="text-5xl font-black">0</span>
           <span class="text-xl font-bold ml-1">分</span>
@@ -61,7 +61,7 @@
         
         <!-- 超過アラート -->
         <div id="overLimitAlert" class="hidden bg-rose-500/90 text-white text-xs font-bold py-1 px-3 rounded-lg my-2 inline-block">
-          ⚠️ 本日の獲得枠を <span id="overMinutesText">0</span> 分 超過しています
+          ⚠️ 獲得枠を <span id="overMinutesText">0</span> 分 超過しています
         </div>
 
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
@@ -88,7 +88,7 @@
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
-          <span id="innerDateNotice" class="text-[10px] text-slate-400">当日限り有効（繰越なし）</span>
+          <span id="innerDateNotice" class="text-[10px] text-slate-400">当日限り有効</span>
         </div>
 
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
@@ -292,7 +292,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録（実績連動表示機能付き） -->
+    <!-- タブ 3: 時間割登録 -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
@@ -348,7 +348,7 @@
           </div>
         </div>
 
-        <!-- 時間割テーブル（実績インジケーター付き） -->
+        <!-- 時間割テーブル -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
             <div>
@@ -491,8 +491,10 @@
         const json = await res.json();
         if (json.status === "success") {
           const d = json.data;
-          latestRemainingGameMin = d.remaining_time || 0;
-          latestRemainingCrystaMin = d.crysta_remaining || 0;
+
+          // 週末・連休中であれば、確定週末ボーナスを含めた残高を採用
+          latestRemainingGameMin = d.remaining_time !== undefined ? d.remaining_time : 0;
+          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
           if (d.attended_classes) {
             latestAttendedClassesList = d.attended_classes;
           }
@@ -500,8 +502,10 @@
           document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
           document.getElementById("displayEarned").textContent = d.earned_today;
           document.getElementById("displaySpent").textContent = d.spent_today;
-          document.getElementById("displayWeekend").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
-          document.getElementById("wbTotalDisplay").textContent = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
+          
+          const wb = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
+          document.getElementById("displayWeekend").textContent = wb;
+          document.getElementById("wbTotalDisplay").textContent = wb;
           document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
 
@@ -908,6 +912,7 @@
             latestAttendedClassesList = json.attended_classes;
           }
           renderTable(json.schedule);
+          calcGoalReward();
         } else {
           initBlankSchedule();
         }
@@ -1048,7 +1053,6 @@
       calcGoalReward();
     }
 
-    // テーブルのマス目に実績ステータスバッジ（✓出席/未）を埋め込み表示
     function updateCell(td, item) {
       td.className = "p-1 border border-slate-200 cursor-pointer select-none text-[10px] sm:text-xs";
       if (!item) {
@@ -1081,7 +1085,6 @@
       td.innerHTML = `<div>${badge}${item.subject || "ー"}</div>${statusHtml}`;
     }
 
-    // 見込み分数と実績確定分数を並べて妥当性を明示
     function calcGoalReward() {
       const gameSubjects = {};
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
@@ -1135,12 +1138,10 @@
         gameBreakdownList.appendChild(row);
       }
 
-      // 毎日登校見込み
       gTotalEstimate += 30;
       gameTotalMin.textContent = gTotalEstimate;
       gameEarnedRealMin.textContent = gTotalReal;
 
-      // クリスタ見込み
       crystaBreakdownList.innerHTML = "";
       let activeDaysCount = 0;
 
@@ -1188,13 +1189,13 @@
       }
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("DOMContentLoaded", async () => {
       const today = getTodayYMD();
       document.getElementById("timerDateSelect").value = today;
       document.getElementById("dailyRecordDate").value = today;
-      fetchSavedSchedule().then(() => {
-        fetchDashboardData();
-      });
+      // 時間割と出席実績の取得を完了させてからダッシュボードを取得（表示0分化を完全防止）
+      await fetchSavedSchedule();
+      await fetchDashboardData();
     });
   </script>
 </body>
