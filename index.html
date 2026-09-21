@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <!-- 通常ゲーム残高カード（連休・週末ボーナス対応） -->
+      <!-- 通常ゲーム残高カード（週末・連休ボーナス適用対応） -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
         <p id="timerCardTitle" class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間</p>
         <div class="my-1">
@@ -190,7 +190,7 @@
       </div>
 
       <div class="text-center">
-        <button onclick="fetchDashboardData()" class="text-xs text-indigo-600 underline">🔄 最新の残高に更新する</button>
+        <button onclick="refreshAll()" class="text-xs text-indigo-600 underline font-bold">🔄 最新の残高に更新する</button>
       </div>
     </section>
 
@@ -391,6 +391,8 @@
     let currentSchedule = [];
     let currentSavedRedAttendMap = {};
     let latestAttendedClassesList = [];
+    let calculatedWeekendBonusReal = 0;
+    let calculatedWeekendItems = [];
     let latestRemainingGameMin = 0;
     let latestRemainingCrystaMin = 0;
 
@@ -410,6 +412,18 @@
       return `${y}-${m}-${day}`;
     }
 
+    // 週末（土日）および連続する祝日判定（9/21敬老の日対応）
+    function isWeekendOrHoliday(dateStr) {
+      const d = new Date(dateStr.replace(/-/g, "/"));
+      const day = d.getDay();
+      if (day === 0 || day === 6) return true;
+      const parts = dateStr.replace(/-/g, "/").split("/");
+      const m = Number(parts[1]);
+      const dateNum = Number(parts[2]);
+      if (m === 9 && (dateNum === 21 || dateNum === 22 || dateNum === 23)) return true;
+      return false;
+    }
+
     function switchTab(tab) {
       ["Timer", "Daily", "Schedule"].forEach(t => {
         const isTarget = t.toLowerCase() === tab;
@@ -421,14 +435,14 @@
           btn.className = "text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm";
         }
       });
-      if (tab === "timer") fetchDashboardData();
+      if (tab === "timer") refreshAll();
       if (tab === "daily") loadDailyRecordForSelectedDate();
       if (tab === "schedule") fetchSavedSchedule();
     }
 
     function setTimerToday() {
       document.getElementById("timerDateSelect").value = getTodayYMD();
-      fetchDashboardData();
+      refreshAll();
     }
 
     function setDailyToday() {
@@ -484,6 +498,11 @@
       });
     }
 
+    async function refreshAll() {
+      await fetchSavedSchedule();
+      await fetchDashboardData();
+    }
+
     async function fetchDashboardData() {
       const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
       try {
@@ -492,24 +511,19 @@
         if (json.status === "success") {
           const d = json.data;
 
-          // 週末・連休中であれば、確定週末ボーナスを含めた残高を採用
-          latestRemainingGameMin = d.remaining_time !== undefined ? d.remaining_time : 0;
-          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
-          if (d.attended_classes) {
+          if (d.attended_classes && d.attended_classes.length > 0) {
             latestAttendedClassesList = d.attended_classes;
+            calcGoalReward();
           }
 
-          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
-          document.getElementById("displayEarned").textContent = d.earned_today;
-          document.getElementById("displaySpent").textContent = d.spent_today;
-          
-          const wb = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
-          document.getElementById("displayWeekend").textContent = wb;
-          document.getElementById("wbTotalDisplay").textContent = wb;
-          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
-          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
+          // 時間割画面ですでに確定している150分を最優先で連動
+          const effectiveWeekendBonus = calculatedWeekendBonusReal > 0 ? calculatedWeekendBonusReal : (d.weekend_bonus || 0);
+          const isHoliday = isWeekendOrHoliday(selDate) || (d.is_weekend_holiday === true);
 
-          if (d.is_weekend_holiday) {
+          // 連休中なら、確定週末ボーナス（150分）を「いま遊べるゲーム時間」に直接合算
+          let totalPlayable = (d.earned_today || 0);
+          if (isHoliday) {
+            totalPlayable += effectiveWeekendBonus;
             document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
             document.getElementById("innerDateNotice").textContent = "週末・連休ボーナス共有中";
           } else {
@@ -517,38 +531,46 @@
             document.getElementById("innerDateNotice").textContent = "当日限り有効（繰越なし）";
           }
 
+          const spent = (d.spent_today || 0);
+          latestRemainingGameMin = Math.max(0, totalPlayable - spent);
+          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
+
+          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
+          document.getElementById("displayEarned").textContent = d.earned_today || 0;
+          document.getElementById("displaySpent").textContent = spent;
+          document.getElementById("displayWeekend").textContent = effectiveWeekendBonus;
+          document.getElementById("wbTotalDisplay").textContent = effectiveWeekendBonus;
+          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
+          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
+
           updateInitialCountdownDisplay();
 
           const overAlert = document.getElementById("overLimitAlert");
-          if (d.raw_diff !== undefined && d.raw_diff < 0) {
-            document.getElementById("overMinutesText").textContent = Math.abs(d.raw_diff);
+          if (totalPlayable - spent < 0) {
+            document.getElementById("overMinutesText").textContent = Math.abs(totalPlayable - spent);
             overAlert.classList.remove("hidden");
           } else {
             overAlert.classList.add("hidden");
           }
 
+          // タイマー・残高タブ内の週末ボーナス内訳を描画
           const wbContainer = document.getElementById("wbListContainer");
           wbContainer.innerHTML = "";
-          if (d.weekend_breakdown && d.weekend_breakdown.length > 0) {
-            d.weekend_breakdown.forEach(item => {
+          if (calculatedWeekendItems.length > 0) {
+            calculatedWeekendItems.forEach(item => {
               const row = document.createElement("div");
               row.className = "flex justify-between items-center";
-              const isFull = item.status === "全コマ達成";
-              const isPartial = item.status === "一部達成";
-              const countText = item.totalCount !== undefined ? `(${item.attendedCount}/${item.totalCount}コマ出席)` : "";
-              
               let badge = "";
-              if (isFull) {
+              if (item.points === 40) {
                 badge = `<span class="text-emerald-600 font-bold">✓ 全コマ達成</span>`;
-              } else if (isPartial) {
+              } else if (item.points === 30) {
                 badge = `<span class="text-indigo-600 font-bold">✓ 一部達成</span>`;
               } else {
                 badge = `<span class="text-slate-400">未達成</span>`;
               }
-
               row.innerHTML = `
-                <span class="${(isFull || isPartial) ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} ${countText} ${badge}</span>
-                <span class="${(isFull || isPartial) ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
+                <span class="${item.points > 0 ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} (${item.attendedCount}/${item.totalCount}コマ) ${badge}</span>
+                <span class="${item.points > 0 ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
               `;
               wbContainer.appendChild(row);
             });
@@ -558,11 +580,11 @@
 
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
-            document.getElementById("breakdownTodayEarned").textContent = `${d.earned_today} 分`;
-            document.getElementById("bWakeTime").textContent = b.wakeTime;
-            document.getElementById("bWakeMin").textContent = `+${b.wakeMin}分`;
-            document.getElementById("bAttendMin").textContent = `+${b.attendMin}分`;
-            document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin}分`;
+            document.getElementById("breakdownTodayEarned").textContent = `${d.earned_today || 0} 分`;
+            document.getElementById("bWakeTime").textContent = b.wakeTime || "--";
+            document.getElementById("bWakeMin").textContent = `+${b.wakeMin || 0}分`;
+            document.getElementById("bAttendMin").textContent = `+${b.attendMin || 0}分`;
+            document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin || 0}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
             document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
 
@@ -789,7 +811,7 @@
           })
         });
         alert(`${playType} おつかれさま！ ${spentMins} 分 利用したよ。`);
-        fetchDashboardData();
+        refreshAll();
       } catch (e) {
         alert("利用時間の保存に失敗しました。");
       } finally {
@@ -814,7 +836,7 @@
         const json = await res.json();
         if (json.status === "success") {
           alert("利用時間をリセットしました！");
-          fetchDashboardData();
+          refreshAll();
         }
       } catch (e) {
         alert("リセットに失敗しました。");
@@ -1085,6 +1107,7 @@
       td.innerHTML = `<div>${badge}${item.subject || "ー"}</div>${statusHtml}`;
     }
 
+    // 見込み分数と実績確定分数の算出
     function calcGoalReward() {
       const gameSubjects = {};
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
@@ -1104,6 +1127,7 @@
       gameBreakdownList.innerHTML = "";
       let gTotalEstimate = 0;
       let gTotalReal = 0;
+      calculatedWeekendItems = [];
 
       for (const [subj, keys] of Object.entries(gameSubjects)) {
         gTotalEstimate += 40;
@@ -1125,6 +1149,12 @@
         }
 
         gTotalReal += realPoints;
+        calculatedWeekendItems.push({
+          subject: subj,
+          attendedCount: attendedCount,
+          totalCount: totalCount,
+          points: realPoints
+        });
 
         const row = document.createElement("div");
         row.className = "flex justify-between items-center p-1.5 bg-white rounded-lg border border-indigo-100 text-slate-700";
@@ -1139,9 +1169,12 @@
       }
 
       gTotalEstimate += 30;
-      gameTotalMin.textContent = gTotalEstimate;
-      gameEarnedRealMin.textContent = gTotalReal;
+      calculatedWeekendBonusReal = gTotalReal; // 確定値（150分）
 
+      if (gameTotalMin) gameTotalMin.textContent = gTotalEstimate;
+      if (gameEarnedRealMin) gameEarnedRealMin.textContent = gTotalReal;
+
+      // クリスタ見込み
       crystaBreakdownList.innerHTML = "";
       let activeDaysCount = 0;
 
@@ -1193,9 +1226,7 @@
       const today = getTodayYMD();
       document.getElementById("timerDateSelect").value = today;
       document.getElementById("dailyRecordDate").value = today;
-      // 時間割と出席実績の取得を完了させてからダッシュボードを取得（表示0分化を完全防止）
-      await fetchSavedSchedule();
-      await fetchDashboardData();
+      await refreshAll();
     });
   </script>
 </body>
