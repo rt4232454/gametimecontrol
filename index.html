@@ -51,7 +51,7 @@
         </div>
       </div>
 
-      <!-- 通常ゲーム残高カード（週末・連休ボーナス適用対応） -->
+      <!-- 通常ゲーム残高カード -->
       <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
         <p id="timerCardTitle" class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間（当日限り有効）</p>
         <div class="my-1">
@@ -222,7 +222,7 @@
           <div class="flex justify-between items-center border-b border-red-200/60 pb-1.5">
             <div>
               <span class="text-xs sm:text-sm font-bold text-red-950 block">🔴 宣言した授業に出席できた？</span>
-              <span class="text-[10px] text-red-700">全コマ出席で週末ボーナス（40分/教科）確定</span>
+              <span class="text-[10px] text-red-700">全コマ出席で40分、1コマ以上出席で30分獲得</span>
             </div>
           </div>
           <div id="redClassesList" class="space-y-1.5 text-xs"></div>
@@ -292,7 +292,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録 -->
+    <!-- タブ 3: 時間割登録（実績連動表示機能付き） -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
@@ -315,18 +315,25 @@
 
       <div id="reviewSection" class="space-y-4">
         
+        <!-- 見込みと確定実績の内訳対比カード -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="border-b pb-2 flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-700">見込み時間の積算内訳</span>
-            <span class="text-[11px] text-slate-400">🔴＝通常 / 🔺＝クリスタ(1日15分)</span>
+            <span class="text-xs font-bold text-slate-700">見込み時間 ＆ 実績確定状況</span>
+            <span class="text-[10px] text-slate-400">全出席40分／一部30分／未出席0分</span>
           </div>
 
-          <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100">
-            <div class="flex justify-between items-center mb-1.5">
-              <span class="text-xs font-bold text-indigo-900">🎮 週末ボーナス 見込み（全出席時）</span>
-              <span class="text-lg font-black text-indigo-600"><span id="gameTotalMin">0</span> 分</span>
+          <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 space-y-1">
+            <div class="flex justify-between items-center mb-1">
+              <div>
+                <span class="text-xs font-bold text-indigo-900 block">🎮 週末ボーナス（見込み vs 現在の確定実績）</span>
+                <span class="text-[10px] text-indigo-600">見込み最大: <span id="gameTotalMin">0</span>分</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-indigo-700 font-bold block">現在の実績確定</span>
+                <span class="text-xl font-black text-indigo-700"><span id="gameEarnedRealMin">0</span> 分</span>
+              </div>
             </div>
-            <div id="gameBreakdownList" class="space-y-1 text-xs"></div>
+            <div id="gameBreakdownList" class="space-y-1.5 text-xs pt-1 border-t border-indigo-100"></div>
           </div>
 
           <div class="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
@@ -341,10 +348,14 @@
           </div>
         </div>
 
+        <!-- 時間割テーブル（実績インジケーター付き） -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
-            <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 今週の時間割（タップで変更可）</h3>
-            <span class="text-[10px] text-slate-500">空 ➔ 🔴(ゲーム) ➔ 🔺(クリスタ)</span>
+            <div>
+              <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 今週の時間割（実績反映中）</h3>
+              <span class="text-[10px] text-slate-500">空 ➔ 🔴(ゲーム) ➔ 🔺(クリスタ) / 緑字は出席確認済</span>
+            </div>
+            <button onclick="fetchSavedSchedule()" class="text-xs text-indigo-600 underline font-bold">更新</button>
           </div>
 
           <div class="overflow-x-auto">
@@ -379,6 +390,7 @@
 
     let currentSchedule = [];
     let currentSavedRedAttendMap = {};
+    let latestAttendedClassesList = [];
     let latestRemainingGameMin = 0;
     let latestRemainingCrystaMin = 0;
 
@@ -481,6 +493,9 @@
           const d = json.data;
           latestRemainingGameMin = d.remaining_time || 0;
           latestRemainingCrystaMin = d.crysta_remaining || 0;
+          if (d.attended_classes) {
+            latestAttendedClassesList = d.attended_classes;
+          }
 
           document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
           document.getElementById("displayEarned").textContent = d.earned_today;
@@ -490,7 +505,6 @@
           document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
 
-          // 週末・連休の残高タイトルの切り替え
           if (d.is_weekend_holiday) {
             document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
             document.getElementById("innerDateNotice").textContent = "週末・連休ボーナス共有中";
@@ -515,14 +529,22 @@
             d.weekend_breakdown.forEach(item => {
               const row = document.createElement("div");
               row.className = "flex justify-between items-center";
-              const isDone = item.status === "達成";
+              const isFull = item.status === "全コマ達成";
+              const isPartial = item.status === "一部達成";
               const countText = item.totalCount !== undefined ? `(${item.attendedCount}/${item.totalCount}コマ出席)` : "";
-              const badge = isDone 
-                ? `<span class="text-emerald-600 font-bold">✓ 達成</span>` 
-                : `<span class="text-slate-400">未達成</span>`;
+              
+              let badge = "";
+              if (isFull) {
+                badge = `<span class="text-emerald-600 font-bold">✓ 全コマ達成</span>`;
+              } else if (isPartial) {
+                badge = `<span class="text-indigo-600 font-bold">✓ 一部達成</span>`;
+              } else {
+                badge = `<span class="text-slate-400">未達成</span>`;
+              }
+
               row.innerHTML = `
-                <span class="${isDone ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} ${countText} ${badge}</span>
-                <span class="${isDone ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
+                <span class="${(isFull || isPartial) ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} ${countText} ${badge}</span>
+                <span class="${(isFull || isPartial) ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
               `;
               wbContainer.appendChild(row);
             });
@@ -882,6 +904,9 @@
         const json = await res.json();
         if (json.status === "success" && json.schedule && json.schedule.length > 0) {
           currentSchedule = json.schedule;
+          if (json.attended_classes) {
+            latestAttendedClassesList = json.attended_classes;
+          }
           renderTable(json.schedule);
         } else {
           initBlankSchedule();
@@ -911,6 +936,7 @@
     const percentText = document.getElementById("percentText");
     const tableBody = document.getElementById("tableBody");
     const gameTotalMin = document.getElementById("gameTotalMin");
+    const gameEarnedRealMin = document.getElementById("gameEarnedRealMin");
     const crystaTotalMin = document.getElementById("crystaTotalMin");
     const gameBreakdownList = document.getElementById("gameBreakdownList");
     const crystaBreakdownList = document.getElementById("crystaBreakdownList");
@@ -1022,25 +1048,40 @@
       calcGoalReward();
     }
 
+    // テーブルのマス目に実績ステータスバッジ（✓出席/未）を埋め込み表示
     function updateCell(td, item) {
       td.className = "p-1 border border-slate-200 cursor-pointer select-none text-[10px] sm:text-xs";
       if (!item) {
         td.textContent = "ー";
         return;
       }
+
       let badge = "";
+      let statusHtml = "";
+
       if (item.mark === "circle") {
         td.classList.add("cell-circle", "font-bold", "text-red-700");
         badge = "🔴";
+
+        const classKey = `${item.day}_${item.period}_${item.subject}`;
+        const isAttended = latestAttendedClassesList.includes(classKey);
+
+        if (isAttended) {
+          statusHtml = `<span class="block text-[8px] bg-emerald-600 text-white rounded px-1 py-0.2 font-black mt-0.5">✓出席</span>`;
+        } else {
+          statusHtml = `<span class="block text-[8px] bg-red-200 text-red-800 rounded px-1 py-0.2 font-bold mt-0.5">未</span>`;
+        }
       } else if (item.mark === "triangle") {
         td.classList.add("cell-triangle", "font-bold", "text-amber-700");
         badge = "🔺";
       } else {
         td.classList.add("text-slate-700", "bg-white");
       }
-      td.textContent = `${badge}${item.subject || "ー"}`;
+
+      td.innerHTML = `<div>${badge}${item.subject || "ー"}</div>${statusHtml}`;
     }
 
+    // 見込み分数と実績確定分数を並べて妥当性を明示
     function calcGoalReward() {
       const gameSubjects = {};
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
@@ -1048,7 +1089,8 @@
       currentSchedule.forEach(item => {
         if (!item.subject || !item.mark) return;
         if (item.mark === "circle") {
-          gameSubjects[item.subject] = (gameSubjects[item.subject] || 0) + 1;
+          if (!gameSubjects[item.subject]) gameSubjects[item.subject] = [];
+          gameSubjects[item.subject].push(`${item.day}_${item.period}_${item.subject}`);
         } else if (item.mark === "triangle") {
           if (crystaDays[item.day]) {
             crystaDays[item.day].push(item.subject);
@@ -1057,21 +1099,48 @@
       });
 
       gameBreakdownList.innerHTML = "";
-      let gTotal = 0;
-      for (const [subj, count] of Object.entries(gameSubjects)) {
-        gTotal += 40;
+      let gTotalEstimate = 0;
+      let gTotalReal = 0;
+
+      for (const [subj, keys] of Object.entries(gameSubjects)) {
+        gTotalEstimate += 40;
+        const totalCount = keys.length;
+        const attendedCount = keys.filter(k => latestAttendedClassesList.includes(k)).length;
+
+        let realPoints = 0;
+        let badgeHtml = "";
+
+        if (attendedCount === totalCount && totalCount > 0) {
+          realPoints = 40;
+          badgeHtml = `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">全コマ達成 (+40分)</span>`;
+        } else if (attendedCount >= 1 && totalCount > 1) {
+          realPoints = 30;
+          badgeHtml = `<span class="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">一部達成 (+30分)</span>`;
+        } else {
+          realPoints = 0;
+          badgeHtml = `<span class="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">未達成 (+0分)</span>`;
+        }
+
+        gTotalReal += realPoints;
+
         const row = document.createElement("div");
-        row.className = "flex justify-between items-center text-slate-700";
-        row.innerHTML = `<span>🔴 ${subj} (${count}コマ全出席)</span><span class="font-bold text-indigo-700">+40分</span>`;
+        row.className = "flex justify-between items-center p-1.5 bg-white rounded-lg border border-indigo-100 text-slate-700";
+        row.innerHTML = `
+          <div>
+            <div class="font-bold text-indigo-950">🔴 ${subj}</div>
+            <div class="text-[10px] text-slate-500">出席: ${attendedCount}/${totalCount}コマ (見込み最大: 40分)</div>
+          </div>
+          <div>${badgeHtml}</div>
+        `;
         gameBreakdownList.appendChild(row);
       }
-      gTotal += 30;
-      const bonusRow = document.createElement("div");
-      bonusRow.className = "flex justify-between items-center text-indigo-800 font-bold border-t border-indigo-100 pt-1";
-      bonusRow.innerHTML = `<span>🏫 1週間毎日登校ボーナス</span><span>+30分</span>`;
-      gameBreakdownList.appendChild(bonusRow);
-      gameTotalMin.textContent = gTotal;
 
+      // 毎日登校見込み
+      gTotalEstimate += 30;
+      gameTotalMin.textContent = gTotalEstimate;
+      gameEarnedRealMin.textContent = gTotalReal;
+
+      // クリスタ見込み
       crystaBreakdownList.innerHTML = "";
       let activeDaysCount = 0;
 
