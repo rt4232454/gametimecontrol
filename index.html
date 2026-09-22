@@ -77,7 +77,7 @@
               <span id="wakeStatusChip" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
             </div>
             <div class="mt-2 flex items-center justify-between">
-              <span id="wakeRecordedTime" class="text-xs font-mono font-bold text-slate-600">--:--</span>
+              <span id="wakeRecordedTime" class="text-base font-mono font-black text-slate-800">--:--</span>
               <button onclick="recordMorningTap('wake')" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm">
                 ⏰ タップ
               </button>
@@ -94,7 +94,7 @@
               <span id="breakfastStatusChip" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
             </div>
             <div class="mt-2 flex items-center justify-between">
-              <span id="breakfastRecordedTime" class="text-xs font-mono font-bold text-slate-600">--:--</span>
+              <span id="breakfastRecordedTime" class="text-base font-mono font-black text-slate-800">--:--</span>
               <button onclick="recordMorningTap('breakfast')" class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm">
                 🍚 タップ
               </button>
@@ -139,35 +139,52 @@
         </div>
       </div>
 
-      <!-- 積算内訳カード -->
+      <!-- 積算内訳カード（獲得・消費・残りが明確にわかる強化版） -->
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
           <span id="innerDateNotice" class="text-[10px] text-slate-400">当日限り有効</span>
         </div>
 
+        <!-- 🌟 獲得・消費・残りのサマリーメーター -->
+        <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+          <div class="bg-white p-1.5 rounded-lg border border-slate-200/80">
+            <span class="text-[9px] text-slate-500 block font-bold">① 獲得合計</span>
+            <span id="summaryEarnedTotal" class="text-sm font-black text-indigo-600">+0分</span>
+          </div>
+          <div class="bg-white p-1.5 rounded-lg border border-slate-200/80">
+            <span class="text-[9px] text-slate-500 block font-bold">② 本日消費</span>
+            <span id="summarySpentTotal" class="text-sm font-black text-rose-600">-0分</span>
+          </div>
+          <div class="bg-indigo-50 p-1.5 rounded-lg border border-indigo-200">
+            <span class="text-[9px] text-indigo-700 block font-bold">③ あそべる残り</span>
+            <span id="summaryPlayableRemaining" class="text-sm font-black text-indigo-900">0分</span>
+          </div>
+        </div>
+
+        <!-- 日次獲得内訳 -->
         <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
           <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
             <span>通常ゲーム獲得合計</span>
             <span id="breakdownTodayEarned">0 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
-            <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--</span>)</span>
-            <span id="bWakeMin">+0分</span>
+            <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--:--</span>)</span>
+            <span id="bWakeMin" class="font-bold text-slate-700">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
             <div>
               <span>🏫 帰宅後お勉強（5教科全完了で達成）</span>
               <span id="bStudyDetail" class="text-[10px] text-slate-400 block">国2/数4/理2/社2/英4</span>
             </div>
-            <span id="bAttendMin" class="font-bold">+0分</span>
+            <span id="bAttendMin" class="font-bold text-slate-700">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
             <div>
               <span>📖 ゆい道（前日達成ボーナス）</span>
               <span id="bYuidoTodayBadge" class="hidden text-[10px] text-emerald-600 font-bold ml-1">[本日実施済:明日+10分]</span>
             </div>
-            <span id="bYuidoMin">+0分</span>
+            <span id="bYuidoMin" class="font-bold text-slate-700">+0分</span>
           </div>
           <div id="bCapAlert" class="hidden text-[10px] text-rose-600 font-bold border-t border-slate-200 pt-1 text-right">
             ※ 平日上限（1日最大100分）が適用されています
@@ -177,7 +194,10 @@
         <!-- 週末ボーナスの実績内訳 -->
         <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 text-xs space-y-1">
           <div class="flex justify-between items-center font-bold text-indigo-900 border-b border-indigo-200/60 pb-1">
-            <span>週末ボーナス（実績確定分）</span>
+            <div>
+              <span>週末ボーナス（実績確定枠）</span>
+              <span id="wbRemainingSubText" class="text-[10px] text-indigo-600 font-normal ml-1"></span>
+            </div>
             <span class="text-sm font-black text-indigo-700"><span id="wbTotalDisplay">0</span> 分</span>
           </div>
           <div id="wbListContainer" class="space-y-1 pt-1 text-[11px]"></div>
@@ -375,7 +395,6 @@
 
       <div id="reviewSection" class="space-y-4">
         
-        <!-- 見込みと確定実績の内訳対比カード -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="border-b pb-2 flex justify-between items-center">
             <span class="text-xs font-bold text-slate-700">見込み時間 ＆ 実績確定状況</span>
@@ -408,7 +427,6 @@
           </div>
         </div>
 
-        <!-- 時間割テーブル -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center border-b pb-2">
             <div>
@@ -473,6 +491,19 @@
       return `${y}-${m}-${day}`;
     }
 
+    // 時刻文字列を確実に「HH:mm」形式（●:〇●）にクリーンアップする関数
+    function formatToHHMM(raw) {
+      if (!raw || raw === "--" || raw === "undefined") return "--:--";
+      const s = String(raw).trim();
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (m) {
+        const hh = String(m[1]).padStart(2, "0");
+        const mm = String(m[2]);
+        return `${hh}:${mm}`;
+      }
+      return s;
+    }
+
     function isWeekendOrHoliday(dateStr) {
       const d = new Date(dateStr.replace(/-/g, "/"));
       const day = d.getDay();
@@ -530,7 +561,6 @@
       }
     }
 
-    // 朝のワンタップ記録
     async function recordMorningTap(type) {
       const d = new Date();
       const hh = String(d.getHours()).padStart(2, "0");
@@ -604,50 +634,45 @@
           }
           calcGoalReward();
 
-          // 週末・連休の判定
           const isHoliday = isWeekendOrHoliday(selDate) || (d.is_weekend_holiday === true);
+          const effectiveRemainingWeekendBonus = d.weekend_bonus !== undefined ? Number(d.weekend_bonus) : 0;
 
-          // GASから返ってくる「実際に残っている週末ボーナス」を採用（使い切っていたら0分）
-          const effectiveRemainingWeekendBonus = d.weekend_bonus !== undefined ? d.weekend_bonus : 0;
-
-          // 消化優先順位：当日獲得分から優先消費、余剰分が週末ボーナスから引かれる
-          const earned = Number(d.earned_today) || 0;
+          // 本日獲得分と消費分の計算
+          let earned = Number(d.earned_today) || 0;
           const spent = Number(d.spent_today) || 0;
-          const remainingToday = Math.max(0, earned - spent);
 
-          if (isHoliday) {
-            latestRemainingGameMin = remainingToday + effectiveRemainingWeekendBonus;
-            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
-            document.getElementById("innerDateNotice").textContent = "週末・連休ボーナス共有中";
-          } else {
-            latestRemainingGameMin = remainingToday;
-            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（当日限り有効）";
-            document.getElementById("innerDateNotice").textContent = "当日限り有効（繰越なし）";
-          }
+          // 朝の起床時刻の表示・判定クリーンアップ（Sat Dec 30 1899 ... 対策）
+          let wTimeFormatted = "--:--";
+          let bTimeFormatted = "--:--";
+          let calculatedWakeBonus = 0;
 
-          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
-
-          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
-          document.getElementById("displayEarned").textContent = earned;
-          document.getElementById("displaySpent").textContent = spent;
-          document.getElementById("displayWeekend").textContent = effectiveRemainingWeekendBonus;
-          document.getElementById("wbTotalDisplay").textContent = effectiveRemainingWeekendBonus;
-          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
-          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
-
-          // 朝ルーティンカードの描画更新
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
-            const wTime = b.wakeTime || "--";
-            const bTime = b.breakfastTime || "--";
-            document.getElementById("wakeRecordedTime").textContent = wTime;
-            document.getElementById("breakfastRecordedTime").textContent = bTime;
+            wTimeFormatted = formatToHHMM(b.wakeTime);
+            bTimeFormatted = formatToHHMM(b.breakfastTime);
 
-            const isWakeOk = (wTime !== "--" && Number(wTime.replace(":", "")) <= 555);
-            const isBreakfastOk = (bTime !== "--" && Number(bTime.replace(":", "")) <= 610);
+            document.getElementById("wakeRecordedTime").textContent = wTimeFormatted;
+            document.getElementById("breakfastRecordedTime").textContent = bTimeFormatted;
+            document.getElementById("bWakeTime").textContent = wTimeFormatted;
+
+            // 起床ボーナスの即時再計算（6:30までの残り分数 / 最大30分）
+            if (wTimeFormatted !== "--:--") {
+              const [wh, wm] = wTimeFormatted.split(":").map(Number);
+              const diffMin = (6 * 60 + 30) - (wh * 60 + wm);
+              calculatedWakeBonus = Math.max(0, Math.min(30, diffMin));
+            }
+
+            // 起床獲得分がGAS側で0になっていた場合は補正
+            if (earned === 0 && calculatedWakeBonus > 0) {
+              earned = calculatedWakeBonus;
+            }
+
+            // 5:55 / 6:10 判定
+            const isWakeOk = (wTimeFormatted !== "--:--") && (Number(wTimeFormatted.replace(":", "")) <= 555);
+            const isBreakfastOk = (bTimeFormatted !== "--:--") && (Number(bTimeFormatted.replace(":", "")) <= 610);
 
             const wChip = document.getElementById("wakeStatusChip");
-            if (wTime === "--") {
+            if (wTimeFormatted === "--:--") {
               wChip.textContent = "未"; wChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
             } else if (isWakeOk) {
               wChip.textContent = "✅ クリア"; wChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700";
@@ -656,7 +681,7 @@
             }
 
             const bChip = document.getElementById("breakfastStatusChip");
-            if (bTime === "--") {
+            if (bTimeFormatted === "--:--") {
               bChip.textContent = "未"; bChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
             } else if (isBreakfastOk) {
               bChip.textContent = "✅ クリア"; bChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700";
@@ -669,7 +694,7 @@
             if (morningGameEligibleToday) {
               mainBadge.textContent = "🎉 朝ゲーム解禁！(6:20〜6:50)";
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 animate-pulse";
-            } else if (wTime !== "--" || bTime !== "--") {
+            } else if (wTimeFormatted !== "--:--" || bTimeFormatted !== "--:--") {
               mainBadge.textContent = "❌ 本日の朝ゲーム不可";
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200";
             } else {
@@ -677,9 +702,7 @@
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
             }
 
-            document.getElementById("breakdownTodayEarned").textContent = `${earned} 分`;
-            document.getElementById("bWakeTime").textContent = wTime;
-            document.getElementById("bWakeMin").textContent = `+${b.wakeMin || 0}分`;
+            document.getElementById("bWakeMin").textContent = `+${calculatedWakeBonus}分`;
             document.getElementById("bAttendMin").textContent = `+${b.attendMin || 0}分`;
             document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin || 0}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
@@ -704,18 +727,47 @@
             }
           }
 
+          // 消化優先順位：当日獲得分から優先消費、余剰が週末ボーナスから引かれる
+          const remainingToday = Math.max(0, earned - spent);
+
+          if (isHoliday) {
+            latestRemainingGameMin = remainingToday + effectiveRemainingWeekendBonus;
+            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
+            document.getElementById("innerDateNotice").textContent = "週末・連休ボーナス共有中";
+          } else {
+            latestRemainingGameMin = remainingToday;
+            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（当日限り有効）";
+            document.getElementById("innerDateNotice").textContent = "当日限り有効（繰越なし）";
+          }
+
+          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
+
+          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
+          document.getElementById("displayEarned").textContent = earned;
+          document.getElementById("displaySpent").textContent = spent;
+          document.getElementById("displayWeekend").textContent = effectiveRemainingWeekendBonus;
+          document.getElementById("wbTotalDisplay").textContent = effectiveRemainingWeekendBonus;
+          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
+          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
+          document.getElementById("breakdownTodayEarned").textContent = `${earned} 分`;
+
+          // 🌟 積算内訳カード上部の「獲得・消費・残り」サマリー更新
+          const totalEarnedForSummary = isHoliday ? (earned + effectiveRemainingWeekendBonus) : earned;
+          document.getElementById("summaryEarnedTotal").textContent = `+${totalEarnedForSummary}分`;
+          document.getElementById("summarySpentTotal").textContent = `-${spent}分`;
+          document.getElementById("summaryPlayableRemaining").textContent = `${latestRemainingGameMin}分`;
+
           updateInitialCountdownDisplay();
 
           const overAlert = document.getElementById("overLimitAlert");
-          const totalPlayable = isHoliday ? (earned + effectiveRemainingWeekendBonus) : earned;
-          if (totalPlayable - spent < 0) {
-            document.getElementById("overMinutesText").textContent = Math.abs(totalPlayable - spent);
+          if (totalEarnedForSummary - spent < 0) {
+            document.getElementById("overMinutesText").textContent = Math.abs(totalEarnedForSummary - spent);
             overAlert.classList.remove("hidden");
           } else {
             overAlert.classList.add("hidden");
           }
 
-          // 週末ボーナス内訳
+          // 週末ボーナス内訳の描画
           const wbContainer = document.getElementById("wbListContainer");
           wbContainer.innerHTML = "";
           if (calculatedWeekendItems.length > 0) {
@@ -1036,8 +1088,8 @@
         const json = await res.json();
         if (json.status === "success" && json.record) {
           const r = json.record;
-          document.getElementById("wakeTimeInput").value = r.wake_time || "";
-          document.getElementById("breakfastTimeInput").value = r.breakfast_time || "";
+          document.getElementById("wakeTimeInput").value = formatToHHMM(r.wake_time);
+          document.getElementById("breakfastTimeInput").value = formatToHHMM(r.breakfast_time);
           document.getElementById("chkKokugo").checked = r.study_kokugo;
           document.getElementById("chkSugaku").checked = r.study_sugaku;
           document.getElementById("chkRika").checked = r.study_rika;
@@ -1286,7 +1338,6 @@
       td.innerHTML = `<div>${badge}${item.subject || "ー"}</div>${statusHtml}`;
     }
 
-    // 見込み分数と実績確定分数の算出
     function calcGoalReward() {
       const gameSubjects = {};
       const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
