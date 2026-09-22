@@ -20,17 +20,20 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-16">
 
-  <!-- ヘッダー / タブ切り替え -->
+  <!-- ヘッダー / タブ切り替え（4タブ構成） -->
   <header class="bg-white sticky top-0 z-50 shadow-sm border-b border-slate-200">
     <div class="max-w-md mx-auto flex justify-around">
-      <button id="tabBtnTimer" onclick="switchTab('timer')" class="tab-active flex-1 py-3 text-center text-xs sm:text-sm">
-        ⏱️ タイマー・残高
+      <button id="tabBtnTimer" onclick="switchTab('timer')" class="tab-active flex-1 py-3 text-center text-xs">
+        ⏱️ タイマー
       </button>
-      <button id="tabBtnDaily" onclick="switchTab('daily')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
-        📝 実績の入力
+      <button id="tabBtnLedger" onclick="switchTab('ledger')" class="text-slate-500 flex-1 py-3 text-center text-xs">
+        📊 収支台帳
       </button>
-      <button id="tabBtnSchedule" onclick="switchTab('schedule')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
-        📅 時間割とうろく
+      <button id="tabBtnDaily" onclick="switchTab('daily')" class="text-slate-500 flex-1 py-3 text-center text-xs">
+        📝 実績入力
+      </button>
+      <button id="tabBtnSchedule" onclick="switchTab('schedule')" class="text-slate-500 flex-1 py-3 text-center text-xs">
+        📅 時間割
       </button>
     </div>
   </header>
@@ -59,7 +62,7 @@
               <span>🌅 朝のルーティン判定</span>
               <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded-full font-bold">合意書v3</span>
             </span>
-            <span class="text-[10px] text-amber-700">両方クリアで朝ゲーム（6:20〜6:50）解禁！</span>
+            <span class="text-[10px] text-amber-700">両方クリアで朝ボーナス30分＆朝ゲーム解禁！</span>
           </div>
           <div id="morningStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
             未判定
@@ -103,7 +106,7 @@
         </div>
 
         <div class="text-[10px] text-amber-800/80 leading-relaxed bg-white/60 p-2 rounded-lg border border-amber-100">
-          ※ 終了時刻は<strong>【6:50絶対固定】</strong>です。保護者出発や登校準備のため、6:50にタイマーが自動終了します。
+          ※ 起床(5:55)と朝食(6:10)の<strong>【両方を満たした場合のみ】</strong>早起きボーナス(30分)と朝ゲームが獲得できます。終了時刻は6:50絶対固定です。
         </div>
       </div>
 
@@ -122,7 +125,10 @@
         <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
           <div>この日獲得: <span id="displayEarned" class="font-bold">0</span> 分</div>
           <div>この日使用: <span id="displaySpent" class="font-bold">0</span> 分</div>
-          <div>週末ボーナス残り: <span id="displayWeekend" class="font-bold">0</span> 分</div>
+          <div>
+            週末ボーナス残: <span id="displayWeekend" class="font-bold">0</span> 分
+            <button onclick="switchTab('ledger')" class="underline ml-0.5 text-indigo-200 hover:text-white font-bold">[台帳]</button>
+          </div>
         </div>
       </div>
 
@@ -139,14 +145,14 @@
         </div>
       </div>
 
-      <!-- 積算内訳カード（獲得・消費・残りが明確にわかる強化版） -->
+      <!-- 積算内訳カード（獲得・消費・残りの収支明示版） -->
       <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
           <span id="innerDateNotice" class="text-[10px] text-slate-400">当日限り有効</span>
         </div>
 
-        <!-- 🌟 獲得・消費・残りのサマリーメーター -->
+        <!-- 獲得・消費・残りサマリーメーター -->
         <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
           <div class="bg-white p-1.5 rounded-lg border border-slate-200/80">
             <span class="text-[9px] text-slate-500 block font-bold">① 獲得合計</span>
@@ -169,7 +175,7 @@
             <span id="breakdownTodayEarned">0 分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px] pt-1">
-            <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--:--</span>)</span>
+            <span>⏰ 朝ルーティン達成（起床5:55＆朝食6:10）</span>
             <span id="bWakeMin" class="font-bold text-slate-700">+0分</span>
           </div>
           <div class="flex justify-between text-slate-500 text-[11px]">
@@ -194,10 +200,7 @@
         <!-- 週末ボーナスの実績内訳 -->
         <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 text-xs space-y-1">
           <div class="flex justify-between items-center font-bold text-indigo-900 border-b border-indigo-200/60 pb-1">
-            <div>
-              <span>週末ボーナス（実績確定枠）</span>
-              <span id="wbRemainingSubText" class="text-[10px] text-indigo-600 font-normal ml-1"></span>
-            </div>
+            <span>週末ボーナス（実績確定枠）</span>
             <span class="text-sm font-black text-indigo-700"><span id="wbTotalDisplay">0</span> 分</span>
           </div>
           <div id="wbListContainer" class="space-y-1 pt-1 text-[11px]"></div>
@@ -269,7 +272,54 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 2: 実績の入力 -->
+    <!-- タブ 2: 週末ボーナス 収支台帳（新設） -->
+    <!-- ============================================== -->
+    <section id="tabLedger" class="hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+        
+        <div class="flex justify-between items-center border-b pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+              <span>📊 週末ボーナス収支管理台帳</span>
+            </h2>
+            <p class="text-[11px] text-slate-400">時間割達成ボーナスの付与・消化・残高推移</p>
+          </div>
+          <button onclick="fetchLedgerData()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg font-bold">
+            🔄 更新
+          </button>
+        </div>
+
+        <!-- 台帳サマリーカード -->
+        <div class="grid grid-cols-2 gap-2 text-center">
+          <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+            <span class="text-[10px] text-indigo-600 font-bold block">今週の獲得総枠</span>
+            <span id="ledgerTotalBonus" class="text-xl font-black text-indigo-950">150 分</span>
+          </div>
+          <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+            <span class="text-[10px] text-emerald-600 font-bold block">現在の残高</span>
+            <span id="ledgerCurrentBalance" class="text-xl font-black text-emerald-700">0 分</span>
+          </div>
+        </div>
+
+        <!-- 履歴一覧タイムライン -->
+        <div class="space-y-2">
+          <div class="flex justify-between text-[11px] font-bold text-slate-500 px-1">
+            <span>日付 / 利用内訳</span>
+            <span>変動 / 残高</span>
+          </div>
+          <div id="ledgerHistoryList" class="space-y-1.5 text-xs">
+            <div class="text-center py-6 text-slate-400">台帳データを読み込んでいます...</div>
+          </div>
+        </div>
+
+        <div class="text-[10px] text-slate-400 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          ※ 週末ボーナスは土日および連休期間中に利用できます。当日に獲得した通常ゲーム枠から優先的に消費され、余剰分がこの台帳から引き落とされます。
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- タブ 3: 実績の入力 -->
     <!-- ============================================== -->
     <section id="tabDaily" class="hidden space-y-4">
       <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -285,7 +335,6 @@
           </div>
         </div>
 
-        <!-- 起床時刻 ＆ 朝食開始時刻 -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-bold text-slate-600 mb-1">⏰ 起きた時間 (5:55)</label>
@@ -372,7 +421,7 @@
     </section>
 
     <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録 -->
+    <!-- タブ 4: 時間割登録 -->
     <!-- ============================================== -->
     <section id="tabSchedule" class="hidden space-y-4">
       
@@ -491,7 +540,6 @@
       return `${y}-${m}-${day}`;
     }
 
-    // 時刻文字列を確実に「HH:mm」形式（●:〇●）にクリーンアップする関数
     function formatToHHMM(raw) {
       if (!raw || raw === "--" || raw === "undefined") return "--:--";
       const s = String(raw).trim();
@@ -516,17 +564,18 @@
     }
 
     function switchTab(tab) {
-      ["Timer", "Daily", "Schedule"].forEach(t => {
+      ["Timer", "Ledger", "Daily", "Schedule"].forEach(t => {
         const isTarget = t.toLowerCase() === tab;
         document.getElementById(`tab${t}`).classList.toggle("hidden", !isTarget);
         const btn = document.getElementById(`tabBtn${t}`);
         if (isTarget) {
-          btn.className = "tab-active flex-1 py-3 text-center text-xs sm:text-sm";
+          btn.className = "tab-active flex-1 py-3 text-center text-xs";
         } else {
-          btn.className = "text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm";
+          btn.className = "text-slate-500 flex-1 py-3 text-center text-xs";
         }
       });
       if (tab === "timer") refreshAll();
+      if (tab === "ledger") fetchLedgerData();
       if (tab === "daily") loadDailyRecordForSelectedDate();
       if (tab === "schedule") fetchSavedSchedule();
     }
@@ -588,6 +637,56 @@
       }
     }
 
+    // 🌟 収支台帳データの取得・描画
+    async function fetchLedgerData() {
+      const container = document.getElementById("ledgerHistoryList");
+      container.innerHTML = `<div class="text-center py-6 text-slate-400">データを読み込み中...</div>`;
+
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=get_ledger`);
+        const json = await res.json();
+
+        if (json.status === "success" && json.history) {
+          document.getElementById("ledgerTotalBonus").textContent = `${json.total_bonus || 150} 分`;
+          const lastItem = json.history[json.history.length - 1];
+          const curBal = lastItem ? lastItem.balance : (json.total_bonus || 150);
+          document.getElementById("ledgerCurrentBalance").textContent = `${curBal} 分`;
+
+          container.innerHTML = "";
+          json.history.forEach(item => {
+            const isDeposit = item.spent === 0;
+            const card = document.createElement("div");
+            card.className = `p-2.5 rounded-xl border flex justify-between items-center ${
+              isDeposit ? 'bg-indigo-50/60 border-indigo-100' : 'bg-slate-50 border-slate-200'
+            }`;
+
+            card.innerHTML = `
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-mono text-slate-500">${item.date}</span>
+                  <span class="text-[9px] font-bold px-1.5 py-0.2 rounded ${isDeposit ? 'bg-indigo-600 text-white' : 'bg-rose-100 text-rose-700'}">
+                    ${isDeposit ? '付与' : '利用'}
+                  </span>
+                </div>
+                <div class="font-bold text-xs text-slate-800 mt-0.5">${item.description}</div>
+              </div>
+              <div class="text-right">
+                <div class="font-bold text-xs ${isDeposit ? 'text-indigo-600' : 'text-rose-600'}">
+                  ${isDeposit ? '+' + (json.total_bonus || 150) : '-' + item.spent} 分
+                </div>
+                <div class="text-[10px] text-slate-400">残高: <span class="font-bold text-slate-700">${item.balance}分</span></div>
+              </div>
+            `;
+            container.appendChild(card);
+          });
+        } else {
+          container.innerHTML = `<div class="text-center py-6 text-slate-400">台帳データがありません</div>`;
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="text-center py-6 text-rose-500">台帳の取得に失敗しました</div>`;
+      }
+    }
+
     function renderRedClassesForSelectedDate(targetDayName, savedMap) {
       const container = document.getElementById("redClassesList");
       container.innerHTML = "";
@@ -637,14 +736,12 @@
           const isHoliday = isWeekendOrHoliday(selDate) || (d.is_weekend_holiday === true);
           const effectiveRemainingWeekendBonus = d.weekend_bonus !== undefined ? Number(d.weekend_bonus) : 0;
 
-          // 本日獲得分と消費分の計算
           let earned = Number(d.earned_today) || 0;
           const spent = Number(d.spent_today) || 0;
 
-          // 朝の起床時刻の表示・判定クリーンアップ（Sat Dec 30 1899 ... 対策）
           let wTimeFormatted = "--:--";
           let bTimeFormatted = "--:--";
-          let calculatedWakeBonus = 0;
+          let isMorningRoutineCleared = false;
 
           if (d.daily_breakdown) {
             const b = d.daily_breakdown;
@@ -653,23 +750,10 @@
 
             document.getElementById("wakeRecordedTime").textContent = wTimeFormatted;
             document.getElementById("breakfastRecordedTime").textContent = bTimeFormatted;
-            document.getElementById("bWakeTime").textContent = wTimeFormatted;
 
-            // 起床ボーナスの即時再計算（6:30までの残り分数 / 最大30分）
-            if (wTimeFormatted !== "--:--") {
-              const [wh, wm] = wTimeFormatted.split(":").map(Number);
-              const diffMin = (6 * 60 + 30) - (wh * 60 + wm);
-              calculatedWakeBonus = Math.max(0, Math.min(30, diffMin));
-            }
-
-            // 起床獲得分がGAS側で0になっていた場合は補正
-            if (earned === 0 && calculatedWakeBonus > 0) {
-              earned = calculatedWakeBonus;
-            }
-
-            // 5:55 / 6:10 判定
             const isWakeOk = (wTimeFormatted !== "--:--") && (Number(wTimeFormatted.replace(":", "")) <= 555);
             const isBreakfastOk = (bTimeFormatted !== "--:--") && (Number(bTimeFormatted.replace(":", "")) <= 610);
+            isMorningRoutineCleared = isWakeOk && isBreakfastOk;
 
             const wChip = document.getElementById("wakeStatusChip");
             if (wTimeFormatted === "--:--") {
@@ -690,19 +774,19 @@
             }
 
             const mainBadge = document.getElementById("morningStatusBadge");
-            morningGameEligibleToday = isWakeOk && isBreakfastOk;
+            morningGameEligibleToday = isMorningRoutineCleared;
             if (morningGameEligibleToday) {
-              mainBadge.textContent = "🎉 朝ゲーム解禁！(6:20〜6:50)";
+              mainBadge.textContent = "🎉 朝ルーティン達成 (+30分獲得＆朝ゲーム解禁)";
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 animate-pulse";
             } else if (wTimeFormatted !== "--:--" || bTimeFormatted !== "--:--") {
-              mainBadge.textContent = "❌ 本日の朝ゲーム不可";
+              mainBadge.textContent = "❌ 条件未達成 (ボーナス付与なし)";
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200";
             } else {
               mainBadge.textContent = "未記録";
               mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
             }
 
-            document.getElementById("bWakeMin").textContent = `+${calculatedWakeBonus}分`;
+            document.getElementById("bWakeMin").textContent = isMorningRoutineCleared ? "+30分" : "+0分";
             document.getElementById("bAttendMin").textContent = `+${b.attendMin || 0}分`;
             document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin || 0}分`;
             document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
@@ -727,8 +811,8 @@
             }
           }
 
-          // 消化優先順位：当日獲得分から優先消費、余剰が週末ボーナスから引かれる
-          const remainingToday = Math.max(0, earned - spent);
+          const effectiveEarnedToday = isMorningRoutineCleared ? (earned >= 30 ? earned : earned + 30) : (earned > 30 ? earned - 30 : 0);
+          const remainingToday = Math.max(0, effectiveEarnedToday - spent);
 
           if (isHoliday) {
             latestRemainingGameMin = remainingToday + effectiveRemainingWeekendBonus;
@@ -743,16 +827,15 @@
           latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
 
           document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
-          document.getElementById("displayEarned").textContent = earned;
+          document.getElementById("displayEarned").textContent = effectiveEarnedToday;
           document.getElementById("displaySpent").textContent = spent;
           document.getElementById("displayWeekend").textContent = effectiveRemainingWeekendBonus;
           document.getElementById("wbTotalDisplay").textContent = effectiveRemainingWeekendBonus;
           document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
           document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
-          document.getElementById("breakdownTodayEarned").textContent = `${earned} 分`;
+          document.getElementById("breakdownTodayEarned").textContent = `${effectiveEarnedToday} 分`;
 
-          // 🌟 積算内訳カード上部の「獲得・消費・残り」サマリー更新
-          const totalEarnedForSummary = isHoliday ? (earned + effectiveRemainingWeekendBonus) : earned;
+          const totalEarnedForSummary = isHoliday ? (effectiveEarnedToday + effectiveRemainingWeekendBonus) : effectiveEarnedToday;
           document.getElementById("summaryEarnedTotal").textContent = `+${totalEarnedForSummary}分`;
           document.getElementById("summarySpentTotal").textContent = `-${spent}分`;
           document.getElementById("summaryPlayableRemaining").textContent = `${latestRemainingGameMin}分`;
@@ -767,7 +850,6 @@
             overAlert.classList.add("hidden");
           }
 
-          // 週末ボーナス内訳の描画
           const wbContainer = document.getElementById("wbListContainer");
           wbContainer.innerHTML = "";
           if (calculatedWeekendItems.length > 0) {
