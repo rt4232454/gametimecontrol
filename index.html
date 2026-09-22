@@ -2,926 +2,737 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ゆいのゲーム＆クリスタ時間管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ゆい ゲーム・クリスタ時間管理</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .cell-circle { background-color: #fee2e2; border-color: #ef4444; }
-    .cell-triangle { background-color: #fef3c7; border-color: #f59e0b; }
-    .tab-active { border-bottom: 3px solid #4f46e5; color: #4f46e5; font-weight: bold; }
-    @keyframes pulse-red {
-      0%, 100% { background-color: #fee2e2; }
-      50% { background-color: #fca5a5; }
-    }
-    .timer-alert-active {
-      animation: pulse-red 1s infinite;
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", Meiryo, sans-serif;
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-16">
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-16">
 
-  <!-- ヘッダー / タブ切り替え -->
-  <header class="bg-white sticky top-0 z-50 shadow-sm border-b border-slate-200">
-    <div class="max-w-md mx-auto flex justify-around">
-      <button id="tabBtnTimer" onclick="switchTab('timer')" class="tab-active flex-1 py-3 text-center text-xs sm:text-sm">
-        ⏱️ タイマー・残高
-      </button>
-      <button id="tabBtnDaily" onclick="switchTab('daily')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
-        📝 実績の入力
-      </button>
-      <button id="tabBtnSchedule" onclick="switchTab('schedule')" class="text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm">
-        📅 時間割とうろく
+  <!-- 未送信キュー警告バナー（動的生成枠） -->
+  <div id="sync-warning-banner" class="hidden bg-amber-500 text-white px-4 py-2 text-sm font-semibold flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-2">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <span id="sync-warning-text">未送信の利用記録があります</span>
+    </div>
+    <button onclick="flushPendingLogs(true)" class="bg-white text-amber-700 px-3 py-1 rounded text-xs font-bold shadow hover:bg-amber-50 active:scale-95 transition">
+      今すぐ再同期
+    </button>
+  </div>
+
+  <div class="max-w-md mx-auto p-4 space-y-4">
+
+    <!-- 日付セレクタ ＆ リフレッシュ -->
+    <div class="bg-white rounded-2xl p-3 shadow-sm flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <label for="targetDateInput" class="text-xs font-bold text-slate-500">表示中の日付:</label>
+        <input type="date" id="targetDateInput" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+      </div>
+      <button onclick="loadDashboardData()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-lg text-xs font-bold flex items-center space-x-1 active:scale-95 transition">
+        <i class="fa-solid fa-rotate text-xs"></i>
+        <span>更新</span>
       </button>
     </div>
-  </header>
 
-  <main class="max-w-md mx-auto p-4 space-y-4">
-
-    <!-- ============================================== -->
-    <!-- タブ 1: タイマー ＆ 残高 -->
-    <!-- ============================================== -->
-    <section id="tabTimer" class="space-y-4">
-      
-      <!-- 表示日付セレクター -->
-      <div class="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-sm text-xs">
-        <span class="font-bold text-slate-600">表示中の日付：</span>
-        <div class="flex items-center gap-1.5">
-          <input type="date" id="timerDateSelect" onchange="refreshAll()" class="border border-slate-300 rounded-lg px-2 py-1 text-slate-800 font-medium">
-          <button onclick="setTimerToday()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-bold">今日</button>
+    <!-- 朝のルーティン判定 (合意書v3) -->
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-1.5">
+          <span class="text-base">🌅</span>
+          <h2 class="font-bold text-sm text-amber-900">朝のルーティン判定</h2>
+          <span class="bg-amber-200 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">合意書v3</span>
         </div>
+        <span id="morningGameBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-600">
+          ✕ 本日の朝ゲーム不可
+        </span>
       </div>
+      <p class="text-[11px] text-amber-700 leading-tight">両方クリアで朝ゲーム（6:20〜6:50）解禁！</p>
 
-      <!-- 🌅 朝のルーティン＆朝ゲーム判定カード（家庭内合意書v3） -->
-      <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 rounded-2xl shadow-sm space-y-3">
-        <div class="flex justify-between items-center border-b border-amber-200/70 pb-1.5">
-          <div>
-            <span class="text-xs font-bold text-amber-950 flex items-center gap-1">
-              <span>🌅 朝のルーティン判定</span>
-              <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded-full font-bold">合意書v3</span>
-            </span>
-            <span class="text-[10px] text-amber-700">両方クリアで朝ゲーム（6:20〜6:50）解禁！</span>
+      <div class="grid grid-cols-2 gap-3">
+        <!-- ① 起床記録 -->
+        <div class="bg-white/80 backdrop-blur rounded-xl p-3 border border-amber-100 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-700">① 起床記録</span>
+            <span id="wakeStatusBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
           </div>
-          <div id="morningStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
-            未判定
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <!-- 起床タップ -->
-          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-between">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[11px] font-bold text-slate-700 block">① 起床記録</span>
-                <span class="text-[9px] text-rose-500 font-bold block">5:55まで</span>
-              </div>
-              <span id="wakeStatusChip" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
-            </div>
-            <div class="mt-2 flex items-center justify-between">
-              <span id="wakeRecordedTime" class="text-xs font-mono font-bold text-slate-600">--:--</span>
-              <button onclick="recordMorningTap('wake')" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm">
-                ⏰ タップ
-              </button>
-            </div>
-          </div>
-
-          <!-- 朝食開始タップ -->
-          <div class="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-between">
-            <div class="flex justify-between items-start">
-              <div>
-                <span class="text-[11px] font-bold text-slate-700 block">② 朝食開始</span>
-                <span class="text-[9px] text-rose-500 font-bold block">6:10まで</span>
-              </div>
-              <span id="breakfastStatusChip" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
-            </div>
-            <div class="mt-2 flex items-center justify-between">
-              <span id="breakfastRecordedTime" class="text-xs font-mono font-bold text-slate-600">--:--</span>
-              <button onclick="recordMorningTap('breakfast')" class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm">
-                🍚 タップ
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="text-[10px] text-amber-800/80 leading-relaxed bg-white/60 p-2 rounded-lg border border-amber-100">
-          ※ 終了時刻は<strong>【6:50絶対固定】</strong>です。保護者出発や登校準備のため、6:50にタイマーが自動終了します。
-        </div>
-      </div>
-
-      <!-- 通常ゲーム残高カード -->
-      <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-md text-center">
-        <p id="timerCardTitle" class="text-[11px] uppercase tracking-wider text-indigo-200">いま遊べるゲーム時間</p>
-        <div class="my-1">
-          <span id="displayRemainingMin" class="text-5xl font-black">0</span>
-          <span class="text-xl font-bold ml-1">分</span>
-        </div>
-        
-        <div id="overLimitAlert" class="hidden bg-rose-500/90 text-white text-xs font-bold py-1 px-3 rounded-lg my-2 inline-block">
-          ⚠️ 獲得枠を <span id="overMinutesText">0</span> 分 超過しています
-        </div>
-
-        <div class="flex justify-between border-t border-indigo-500/50 pt-2 text-[11px] text-indigo-100">
-          <div>この日獲得: <span id="displayEarned" class="font-bold">0</span> 分</div>
-          <div>この日使用: <span id="displaySpent" class="font-bold">0</span> 分</div>
-          <div>週末ボーナス: <span id="displayWeekend" class="font-bold">0</span> 分</div>
-        </div>
-      </div>
-
-      <!-- クリスタ専用残高カード -->
-      <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
-        <div>
-          <span class="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">いつでも使ってOK！</span>
-          <div class="text-sm font-bold mt-1">🎨 クリスタ専用のこり時間</div>
-          <span class="text-[10px] text-amber-100 block">※時間割△＋保健室課題でストック</span>
-        </div>
-        <div class="text-right">
-          <span id="displayCrystaRemaining" class="text-4xl font-black">0</span>
-          <span class="text-base font-bold ml-0.5">分</span>
-        </div>
-      </div>
-
-      <!-- 積算内訳カード -->
-      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <span class="text-xs font-bold text-slate-700">📊 <span id="innerDateLabel">本日</span> の積算内訳</span>
-          <span id="innerDateNotice" class="text-[10px] text-slate-400">当日限り有効</span>
-        </div>
-
-        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1 text-xs">
-          <div class="flex justify-between font-bold text-slate-700 pb-1 border-b border-slate-200">
-            <span>通常ゲーム獲得合計</span>
-            <span id="breakdownTodayEarned">0 分</span>
-          </div>
-          <div class="flex justify-between text-slate-500 text-[11px] pt-1">
-            <span>⏰ 起床〜6:30残り (<span id="bWakeTime">--</span>)</span>
-            <span id="bWakeMin">+0分</span>
-          </div>
-          <div class="flex justify-between text-slate-500 text-[11px]">
-            <div>
-              <span>🏫 帰宅後お勉強（5教科全完了で達成）</span>
-              <span id="bStudyDetail" class="text-[10px] text-slate-400 block">国2/数4/理2/社2/英4</span>
-            </div>
-            <span id="bAttendMin" class="font-bold">+0分</span>
-          </div>
-          <div class="flex justify-between text-slate-500 text-[11px]">
-            <div>
-              <span>📖 ゆい道（前日達成ボーナス）</span>
-              <span id="bYuidoTodayBadge" class="hidden text-[10px] text-emerald-600 font-bold ml-1">[本日実施済:明日+10分]</span>
-            </div>
-            <span id="bYuidoMin">+0分</span>
-          </div>
-          <div id="bCapAlert" class="hidden text-[10px] text-rose-600 font-bold border-t border-slate-200 pt-1 text-right">
-            ※ 平日上限（1日最大100分）が適用されています
-          </div>
-        </div>
-
-        <!-- 週末ボーナスの実績内訳 -->
-        <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 text-xs space-y-1">
-          <div class="flex justify-between items-center font-bold text-indigo-900 border-b border-indigo-200/60 pb-1">
-            <span>週末ボーナス（実績確定分）</span>
-            <span class="text-sm font-black text-indigo-700"><span id="wbTotalDisplay">0</span> 分</span>
-          </div>
-          <div id="wbListContainer" class="space-y-1 pt-1 text-[11px]"></div>
-        </div>
-
-        <div class="bg-amber-50/70 p-2 rounded-xl border border-amber-100 text-xs">
-          <span class="text-[11px] font-bold text-amber-900 block">🎨 クリスタ専用枠</span>
-          <span class="text-[10px] text-amber-700 block mt-0.5">時間割△(登校実績で15分) + 保健室課題(15分)</span>
-        </div>
-      </div>
-
-      <!-- タイマー操作カード -->
-      <div id="timerCardBox" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3 transition-colors">
-        
-        <div class="flex items-center justify-center gap-2">
-          <span class="text-xs font-bold text-slate-500">タイマーモード：</span>
-          <select id="playTypeSelect" onchange="changeTimerType()" class="border border-indigo-300 bg-indigo-50 text-indigo-800 font-bold rounded-lg px-2.5 py-1 text-xs">
-            <option value="ゲーム">🎮 通常ゲーム</option>
-            <option value="朝ゲーム">🌅 朝ゲーム（6:20〜6:50専用）</option>
-            <option value="クリスタ">🎨 クリスタ（お絵描き）</option>
-          </select>
-        </div>
-
-        <div id="alarmBanner" class="hidden bg-rose-600 text-white font-bold py-2 px-3 rounded-xl text-xs sm:text-sm animate-bounce shadow-md">
-          🔔 持ち時間が終了しました！ゲーム・クリスタをおしまいにしよう！
-        </div>
-
-        <div class="space-y-1">
-          <div class="text-5xl font-mono font-black text-slate-800 tracking-wider" id="timerDisplay">
-            00:00
-          </div>
-          <div class="text-xs text-slate-500 font-medium">
-            持ち時間のこり：<span id="timerCountdownDisplay" class="font-bold text-indigo-600">--:--</span>
-          </div>
-        </div>
-
-        <div class="text-xs text-slate-400">
-          利用端末：
-          <select id="playDevice" class="ml-1 border border-slate-300 rounded px-2 py-1 bg-white text-slate-700 text-xs">
-            <option value="iPad">iPad</option>
-            <option value="Nintendo Switch">Nintendo Switch</option>
-            <option value="PC">PC</option>
-            <option value="スマホ">スマホ</option>
-          </select>
-        </div>
-
-        <div class="flex gap-2 justify-center pt-2">
-          <button id="startTimerBtn" onclick="startTimer()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm">
-            ▶ スタート
-          </button>
-          <button id="stopTimerBtn" onclick="stopTimer()" disabled class="flex-1 bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm">
-            ⏹ おわる（保存）
-          </button>
-        </div>
-
-        <p id="noBalanceNote" class="hidden text-xs text-rose-500 font-bold">
-          ⚠️ あそべる時間（残高）がありません。
-        </p>
-
-        <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
-          <span>※ スリープ中も計測は正確に継続します</span>
-          <button onclick="resetTodayPlayLog()" class="text-rose-600 hover:text-rose-700 underline font-bold">今日の利用時間をリセット</button>
-        </div>
-      </div>
-
-      <div class="text-center">
-        <button onclick="refreshAll()" class="text-xs text-indigo-600 underline font-bold">🔄 最新の残高に更新する</button>
-      </div>
-    </section>
-
-    <!-- ============================================== -->
-    <!-- タブ 2: 実績の入力 -->
-    <!-- ============================================== -->
-    <section id="tabDaily" class="hidden space-y-4">
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        
-        <div class="border-b pb-3 space-y-1">
-          <div class="flex justify-between items-center">
-            <h2 class="text-base font-bold text-slate-700">📝 がんばり実績の入力</h2>
-            <button onclick="setDailyToday()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded font-bold">今日に戻す</button>
-          </div>
-          <div class="flex items-center gap-2 pt-1">
-            <span class="text-xs font-bold text-slate-500">登録日：</span>
-            <input type="date" id="dailyRecordDate" onchange="loadDailyRecordForSelectedDate()" class="border border-indigo-300 bg-indigo-50 text-indigo-900 rounded-lg p-1.5 text-sm font-bold flex-1">
-          </div>
-        </div>
-
-        <!-- 起床時刻 ＆ 朝食開始時刻 -->
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-bold text-slate-600 mb-1">⏰ 起きた時間 (5:55)</label>
-            <input type="time" id="wakeTimeInput" value="" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-medium">
-          </div>
-          <div>
-            <label class="block text-[11px] font-bold text-slate-600 mb-1">🍚 朝食開始 (6:10)</label>
-            <input type="time" id="breakfastTimeInput" value="" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-medium">
-          </div>
-        </div>
-
-        <!-- 🔴 赤丸出席チェック欄 -->
-        <div class="p-3.5 bg-red-50/70 rounded-xl border border-red-200 space-y-2">
-          <div class="flex justify-between items-center border-b border-red-200/60 pb-1.5">
-            <div>
-              <span class="text-xs sm:text-sm font-bold text-red-950 block">🔴 宣言した授業に出席できた？</span>
-              <span class="text-[10px] text-red-700">全コマ出席で40分、1コマ以上出席で30分獲得</span>
-            </div>
-          </div>
-          <div id="redClassesList" class="space-y-1.5 text-xs"></div>
-        </div>
-
-        <!-- 帰宅後お勉強 -->
-        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-          <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
-            <div>
-              <span class="text-xs sm:text-sm font-bold text-slate-800 block">📚 帰宅後お勉強</span>
-              <span class="text-[10px] text-slate-500">すべてにチェックがついたら ＋60分</span>
-            </div>
-            <div id="studyBadge" class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
-              0 / 5 達成
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-2 text-xs">
-            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="chkKokugo" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium text-slate-700">国語（２コマ）</span>
-            </label>
-            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="chkSugaku" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium text-slate-700">数学（４コマ）</span>
-            </label>
-            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="chkRika" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium text-slate-700">理科（２コマ）</span>
-            </label>
-            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="chkShakai" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium text-slate-700">社会（２コマ）</span>
-            </label>
-            <label class="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
-              <input type="checkbox" id="chkEigo" onchange="updateStudyStatus()" class="w-4 h-4 text-indigo-600 rounded">
-              <span class="font-medium text-slate-700">英語（４コマ）</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- ゆい道 -->
-        <label class="flex flex-col p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-          <div class="flex items-center gap-3">
-            <input type="checkbox" id="yuidoCheck" class="w-5 h-5 text-indigo-600 rounded">
-            <span class="text-xs sm:text-sm font-bold text-slate-700">ゆい道（英単語）をやった！</span>
-          </div>
-          <span class="text-[10px] text-slate-400 mt-1 pl-8">※ ゆい道のご褒美（＋10分）は、翌日の通常ゲーム枠に加算されます。</span>
-        </label>
-
-        <!-- 保健室特別課題 -->
-        <label class="flex flex-col p-3 bg-amber-50/80 rounded-xl border border-amber-200 cursor-pointer">
+          <div class="text-[10px] text-slate-400 mb-2">5:55まで</div>
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <input type="checkbox" id="hokenCheck" class="w-5 h-5 text-amber-600 rounded accent-amber-500">
-              <span class="text-xs sm:text-sm font-bold text-amber-950">保健室での図工・特別課題をやった！</span>
-            </div>
-            <span class="text-xs font-black text-amber-600 bg-white px-2 py-0.5 rounded-md border border-amber-200">+15分</span>
+            <span id="wakeTimeDisplay" class="text-base font-black text-slate-800 tracking-wider">--:--</span>
+            <button id="wakeBtn" onclick="recordWakeUp()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center space-x-1 shadow-sm active:scale-95 transition">
+              <i class="fa-regular fa-clock text-[10px]"></i>
+              <span>タップ</span>
+            </button>
           </div>
-          <span class="text-[10px] text-amber-700 mt-1 pl-8">※ 通常のゲーム時間には入らず、クリスタ専用枠として貯まります。</span>
-        </label>
+        </div>
 
-        <button id="saveDailyBtn" onclick="saveDailyActions()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-md text-sm">
-          💾 この日の記録を保存して残高に反映
+        <!-- ② 朝食開始 -->
+        <div class="bg-white/80 backdrop-blur rounded-xl p-3 border border-amber-100 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-700">② 朝食開始</span>
+            <span id="bfastStatusBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">未</span>
+          </div>
+          <div class="text-[10px] text-slate-400 mb-2">6:10まで</div>
+          <div class="flex items-center justify-between">
+            <span id="bfastTimeDisplay" class="text-base font-black text-slate-800 tracking-wider">--:--</span>
+            <button id="bfastBtn" onclick="recordBreakfast()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2.5 py-1 rounded-lg flex items-center space-x-1 shadow-sm active:scale-95 transition">
+              <i class="fa-solid fa-utensils text-[10px]"></i>
+              <span>タップ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-amber-100/50 rounded-lg p-2 text-[10px] text-amber-800 leading-relaxed">
+        ※ 終了時刻は【6:50絶対固定】です。保護者出発や登校準備のため、6:50にタイマーが自動終了します。
+      </div>
+    </div>
+
+    <!-- メインカード: ゲーム残り時間 -->
+    <div class="bg-indigo-600 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
+      <div class="text-xs font-medium text-indigo-200 text-center mb-1" id="bonusIndicator">
+        いま遊べるゲーム時間（通常）
+      </div>
+      <div class="flex justify-center items-baseline my-1">
+        <span id="remainGameMinutes" class="text-6xl font-black tracking-tight">0</span>
+        <span class="text-xl font-bold ml-1.5 text-indigo-200">分</span>
+      </div>
+      <div class="grid grid-cols-3 gap-1 text-center mt-3 pt-3 border-t border-indigo-500/50 text-[11px] text-indigo-100">
+        <div>
+          <span class="block text-indigo-300 text-[10px]">獲得時間</span>
+          <span id="earnedGameMinutes" class="font-bold text-sm text-white">0</span>分
+        </div>
+        <div>
+          <span class="block text-indigo-300 text-[10px]">本日使用</span>
+          <span id="usedGameMinutes" class="font-bold text-sm text-white">0</span>分
+        </div>
+        <div>
+          <span class="block text-indigo-300 text-[10px]">週末ボーナス</span>
+          <span id="weekendBonusMinutes" class="font-bold text-sm text-white">0</span>分
+        </div>
+      </div>
+    </div>
+
+    <!-- クリスタ専用カード -->
+    <div class="bg-orange-500 text-white rounded-2xl p-4 shadow-md flex items-center justify-between">
+      <div class="space-y-1">
+        <span class="bg-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">
+          いつでも使ってOK！
+        </span>
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-paintbrush text-sm text-orange-200"></i>
+          <h3 class="font-bold text-sm">クリスタ専用のこり時間</h3>
+        </div>
+        <p class="text-[10px] text-orange-100">※ 時間割△ ＋ 保健室課題でストック</p>
+      </div>
+      <div class="text-right flex items-baseline">
+        <span id="remainCrystaMinutes" class="text-4xl font-black">0</span>
+        <span class="text-sm font-bold ml-1 text-orange-100">分</span>
+      </div>
+    </div>
+
+    <!-- 本日の積算内訳 (アコーディオン) -->
+    <details class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 group">
+      <summary class="font-bold text-sm text-slate-700 flex items-center justify-between cursor-pointer list-none select-none">
+        <span class="flex items-center space-x-2">
+          <span>📊</span>
+          <span>本日の積算内訳</span>
+        </span>
+        <div class="flex items-center space-x-2">
+          <span id="breakdownBadge" class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-medium">平日内訳</span>
+          <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
+        </div>
+      </summary>
+      
+      <div class="mt-4 pt-3 border-t border-slate-100 space-y-4 text-xs">
+        <!-- 平日獲得内訳 -->
+        <div>
+          <div class="flex justify-between font-bold text-slate-700 mb-1.5">
+            <span>通常ゲーム獲得合計</span>
+            <span><span id="sumWeekdayEarned">0</span> 分</span>
+          </div>
+          <div class="space-y-1 text-slate-600 pl-2">
+            <div class="flex justify-between">
+              <span>⏰ 起床ボーナス (〜6:30残り)</span>
+              <span id="detailWakeReward">+0分</span>
+            </div>
+            <div class="flex justify-between">
+              <span>🏠 帰宅後お勉強 (5教科全完了)</span>
+              <span id="detailStudyReward">+0分</span>
+            </div>
+            <div class="flex justify-between">
+              <span>🥋 ゆい道 (前日達成ボーナス)</span>
+              <span id="detailYuidoReward">+0分</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 週末ボーナス内訳 -->
+        <div>
+          <div class="flex justify-between font-bold text-slate-700 mb-1.5">
+            <span>週末ボーナス（時間割連動）</span>
+            <span><span id="sumWeekendEarned">0</span> 分</span>
+          </div>
+          <div id="weekendSubjectList" class="space-y-1 text-slate-600 pl-2">
+            <div class="text-slate-400 italic">連動データなし</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- タイマー設定 ＆ コントロール -->
+    <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-1.5">
+          <i class="fa-solid fa-stopwatch text-indigo-600"></i>
+          <span>ゲーム・クリスタタイマー</span>
+        </h3>
+        <span id="timerRunningBadge" class="hidden text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse">
+          稼働中
+        </span>
+      </div>
+
+      <!-- モード切替 -->
+      <div class="space-y-1.5">
+        <label class="text-[11px] font-bold text-slate-500">タイマーモード :</label>
+        <select id="timerModeSelect" onchange="onTimerModeChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="ゲーム">🎮 通常ゲーム</option>
+          <option value="朝ゲーム">🌅 朝ゲーム (6:20〜6:50)</option>
+          <option value="クリスタ">🎨 クリスタ専用</option>
+        </select>
+      </div>
+
+      <!-- 残り時間大型表示 -->
+      <div class="bg-slate-900 text-white rounded-2xl p-6 text-center shadow-inner">
+        <div class="text-5xl font-black font-mono tracking-wider" id="timerDigits">
+          00:00
+        </div>
+        <div class="text-[11px] text-slate-400 mt-2 flex justify-center items-center space-x-1" id="timerSubInfo">
+          <span>利用枠: 通常ゲーム</span>
+        </div>
+      </div>
+
+      <!-- タイマー操作ボタン -->
+      <div class="grid grid-cols-2 gap-3 pt-1">
+        <button id="startTimerBtn" onclick="startTimer()" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center space-x-1.5">
+          <i class="fa-solid fa-play text-sm"></i>
+          <span>スタート</span>
+        </button>
+        <button id="stopTimerBtn" onclick="stopTimerManual()" disabled class="w-full bg-slate-200 text-slate-400 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-1.5 cursor-not-allowed">
+          <i class="fa-solid fa-stop text-sm"></i>
+          <span>ストップ・記録</span>
         </button>
       </div>
-    </section>
+    </div>
 
-    <!-- ============================================== -->
-    <!-- タブ 3: 時間割登録 -->
-    <!-- ============================================== -->
-    <section id="tabSchedule" class="hidden space-y-4">
-      
-      <div id="uploadSection" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-center">
-        <label for="cameraInput" class="cursor-pointer inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl shadow-sm text-sm">
-          📷 新しいじかんわりを さつえい・更新する
-        </label>
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-      </div>
+  </div>
 
-      <div id="progressSection" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
-        <div class="flex justify-between items-center text-xs">
-          <span id="statusMessage" class="font-bold text-indigo-700">じゅんび中...</span>
-          <span id="percentText" class="font-bold text-slate-500">0%</span>
-        </div>
-        <div class="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden border border-slate-200">
-          <div id="progressBar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
-        </div>
-      </div>
-
-      <div id="reviewSection" class="space-y-4">
-        
-        <!-- 見込みと確定実績の内訳対比カード -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-          <div class="border-b pb-2 flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-700">見込み時間 ＆ 実績確定状況</span>
-            <span class="text-[10px] text-slate-400">全出席40分／一部30分／未出席0分</span>
-          </div>
-
-          <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100 space-y-1">
-            <div class="flex justify-between items-center mb-1">
-              <div>
-                <span class="text-xs font-bold text-indigo-900 block">🎮 週末ボーナス（見込み vs 現在の確定実績）</span>
-                <span class="text-[10px] text-indigo-600">見込み最大: <span id="gameTotalMin">0</span>分</span>
-              </div>
-              <div class="text-right">
-                <span class="text-[10px] text-indigo-700 font-bold block">現在の実績確定</span>
-                <span class="text-xl font-black text-indigo-700"><span id="gameEarnedRealMin">0</span> 分</span>
-              </div>
-            </div>
-            <div id="gameBreakdownList" class="space-y-1.5 text-xs pt-1 border-t border-indigo-100"></div>
-          </div>
-
-          <div class="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
-            <div class="flex justify-between items-center mb-1.5">
-              <div>
-                <span class="text-xs font-bold text-amber-900">🎨 クリスタ専用時間 見込み（別枠）</span>
-                <span class="text-[10px] text-amber-600 block sm:inline sm:ml-1">※時間割△(最大75分) ＋ 保健室課題</span>
-              </div>
-              <span class="text-lg font-black text-amber-600"><span id="crystaTotalMin">0</span> 分</span>
-            </div>
-            <div id="crystaBreakdownList" class="space-y-1 text-xs"></div>
-          </div>
-        </div>
-
-        <!-- 時間割テーブル -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-          <div class="flex justify-between items-center border-b pb-2">
-            <div>
-              <h3 class="font-bold text-slate-700 text-xs sm:text-sm">📅 今週の時間割（実績反映中）</h3>
-              <span class="text-[10px] text-slate-500">空 ➔ 🔴(ゲーム) ➔ 🔺(クリスタ) / 緑字は出席確認済</span>
-            </div>
-            <button onclick="fetchSavedSchedule()" class="text-xs text-indigo-600 underline font-bold">更新</button>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-center border-collapse text-xs">
-              <thead>
-                <tr class="bg-slate-100 text-slate-600">
-                  <th class="p-1 border border-slate-200">限</th>
-                  <th class="p-1 border border-slate-200">月</th>
-                  <th class="p-1 border border-slate-200">火</th>
-                  <th class="p-1 border border-slate-200">水</th>
-                  <th class="p-1 border border-slate-200">木</th>
-                  <th class="p-1 border border-slate-200">金</th>
-                </tr>
-              </thead>
-              <tbody id="tableBody"></tbody>
-            </table>
-          </div>
-
-          <button id="saveGoalBtn" onclick="saveGoals()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-md text-sm mt-2">
-            🎯 これで今週の目標をほぞん！
-          </button>
-        </div>
-
-      </div>
-
-    </section>
-
-  </main>
-
+  <!-- JavaScript ロジック -->
   <script>
+    // ==========================================
+    // 構成設定 & 定数
+    // ==========================================
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbx4cKXsDLzfI5CJn0_D2oNhLow4HUc50JueHuA-QxANDRsl_q-7CaVcqrlmpBc1O9IX/exec";
+    const PENDING_QUEUE_KEY = "pending_play_logs_v1";
 
-    let currentSchedule = [];
-    let currentSavedRedAttendMap = {};
-    let latestAttendedClassesList = [];
-    let calculatedWeekendBonusReal = 0;
-    let calculatedWeekendItems = [];
-    let latestRemainingGameMin = 0;
-    let latestRemainingCrystaMin = 0;
-    let morningGameEligibleToday = false;
+    // アプリ状態
+    let currentDashboard = {
+      date: "",
+      remainGame: 0,
+      earnedGame: 0,
+      usedGame: 0,
+      weekendBonus: 0,
+      remainCrysta: 0,
+      isWeekendBonusApplied: false,
+      morningRoutine: {
+        wakeTime: "",
+        breakfastTime: "",
+        wakePassed: false,
+        bfastPassed: false,
+        isUnlocked: false
+      },
+      breakdown: {
+        wakeReward: 0,
+        studyReward: 0,
+        yuidoReward: 0,
+        weekendSubjects: []
+      }
+    };
 
-    let timerInterval = null;
-    let timerStartTime = null;
-    let timerInitialRemainingSec = 0;
-    let timerElapsedSec = 0;
-    let wakeLockSentinel = null;
-    let audioCtx = null;
-    let alarmInterval = null;
+    let timerState = {
+      intervalId: null,
+      mode: "ゲーム", // "ゲーム" | "朝ゲーム" | "クリスタ"
+      startTimestamp: null,
+      targetEndTimestamp: null,
+      allocatedSeconds: 0,
+      isRunning: false
+    };
 
-    function getTodayYMD() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
+    // ==========================================
+    // ライフサイクル & 初期化
+    // ==========================================
+    window.addEventListener("DOMContentLoaded", () => {
+      // 日付初期設定 (今日)
+      const todayStr = getLocalDateString(new Date());
+      document.getElementById("targetDateInput").value = todayStr;
+      document.getElementById("targetDateInput").addEventListener("change", () => loadDashboardData());
 
-    function isWeekendOrHoliday(dateStr) {
-      const d = new Date(dateStr.replace(/-/g, "/"));
-      const day = d.getDay();
-      if (day === 0 || day === 6) return true;
-      const parts = dateStr.replace(/-/g, "/").split("/");
-      const m = Number(parts[1]);
-      const dateNum = Number(parts[2]);
-      if (m === 9 && (dateNum === 21 || dateNum === 22 || dateNum === 23)) return true;
-      return false;
-    }
+      // 保留ログの再送チェック
+      flushPendingLogs();
+      updateSyncWarningUI();
 
-    function switchTab(tab) {
-      ["Timer", "Daily", "Schedule"].forEach(t => {
-        const isTarget = t.toLowerCase() === tab;
-        document.getElementById(`tab${t}`).classList.toggle("hidden", !isTarget);
-        const btn = document.getElementById(`tabBtn${t}`);
-        if (isTarget) {
-          btn.className = "tab-active flex-1 py-3 text-center text-xs sm:text-sm";
-        } else {
-          btn.className = "text-slate-500 flex-1 py-3 text-center text-xs sm:text-sm";
-        }
-      });
-      if (tab === "timer") refreshAll();
-      if (tab === "daily") loadDailyRecordForSelectedDate();
-      if (tab === "schedule") fetchSavedSchedule();
-    }
+      // 初期データ取得
+      loadDashboardData();
+    });
 
-    function setTimerToday() {
-      document.getElementById("timerDateSelect").value = getTodayYMD();
-      refreshAll();
-    }
+    // オンライン復帰時に未送信ログを自動送信
+    window.addEventListener("online", () => {
+      flushPendingLogs();
+      updateSyncWarningUI();
+    });
 
-    function setDailyToday() {
-      document.getElementById("dailyRecordDate").value = getTodayYMD();
-      loadDailyRecordForSelectedDate();
-    }
+    // タブ閉じ・画面離脱時のロスト防止
+    window.addEventListener("pagehide", () => {
+      // 稼働中なら直前までを強制終了してローカル退避
+      if (timerState.isRunning) {
+        emergencySaveRunningTimer();
+      }
+      // キューに残っているものをsendBeaconで送信
+      sendQueueViaBeacon();
+    });
 
-    function updateStudyStatus() {
-      const checks = [
-        document.getElementById("chkKokugo").checked,
-        document.getElementById("chkSugaku").checked,
-        document.getElementById("chkRika").checked,
-        document.getElementById("chkShakai").checked,
-        document.getElementById("chkEigo").checked
-      ];
-      const count = checks.filter(Boolean).length;
-      const badge = document.getElementById("studyBadge");
-
-      if (count === 5) {
-        badge.textContent = "🎉 5教科完了 (+60分)";
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300";
-      } else {
-        badge.textContent = `${count} / 5 達成 (未完了)`;
-        badge.className = "text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200";
+    // ==========================================
+    // 1. PlayLog 送信 ＆ ロスト防止キューシステム
+    // ==========================================
+    function getPendingLogs() {
+      try {
+        return JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY) || "[]");
+      } catch (e) {
+        return [];
       }
     }
 
-    // 朝のワンタップ記録
-    async function recordMorningTap(type) {
-      const d = new Date();
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      const timeStr = `${hh}:${mm}`;
-      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
+    function savePendingLogs(logs) {
+      localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(logs));
+      updateSyncWarningUI();
+    }
+
+    async function recordPlayLog(startTime, endTime, durationMinutes, type, device) {
+      if (durationMinutes <= 0) return;
+
+      const logData = {
+        action: "addPlayLog",
+        logId: "LOG-" + generateLogId(new Date()),
+        recordTime: new Date().toISOString(),
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: durationMinutes,
+        type: type,
+        device: device || "Nintendo Switch"
+      };
+
+      // 1. まずローカルキューに即時書き込み（最優先）
+      const logs = getPendingLogs();
+      logs.push(logData);
+      savePendingLogs(logs);
+
+      // 2. サーバー送信を試みる
+      await flushPendingLogs();
+    }
+
+    async function flushPendingLogs(showVisualFeedback = false) {
+      const logs = getPendingLogs();
+      if (logs.length === 0) {
+        updateSyncWarningUI();
+        return;
+      }
+
+      if (showVisualFeedback) {
+        document.getElementById("sync-warning-text").textContent = "サーバーへ送信中...";
+      }
+
+      const remainingLogs = [];
+
+      for (let i = 0; i < logs.length; i++) {
+        const item = logs[i];
+        try {
+          // POST送信 (Content-Type: text/plain でCORSプリフライト回避)
+          const response = await fetch(GAS_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(item)
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP Status ${response.status}`);
+          }
+          const resJson = await response.json();
+          if (resJson.status !== "success" && resJson.result !== "ok") {
+            // GAS側がエラーを明示的に返した場合は残す
+            remainingLogs.push(item);
+          }
+        } catch (err) {
+          console.warn("ログ再送失敗。キューに残します:", item.logId, err);
+          remainingLogs.push(item);
+        }
+      }
+
+      savePendingLogs(remainingLogs);
+      updateSyncWarningUI();
+
+      // 成功して減った場合、ダッシュボード再読み込み
+      if (remainingLogs.length < logs.length) {
+        loadDashboardData();
+      }
+    }
+
+    function sendQueueViaBeacon() {
+      const logs = getPendingLogs();
+      if (logs.length === 0 || !navigator.sendBeacon) return;
+
+      // sendBeaconで一括または先頭を送信
+      try {
+        const blob = new Blob([JSON.stringify(logs[0])], { type: "text/plain;charset=utf-8" });
+        navigator.sendBeacon(GAS_API_URL, blob);
+      } catch (e) {
+        console.warn("sendBeacon failed:", e);
+      }
+    }
+
+    function updateSyncWarningUI() {
+      const logs = getPendingLogs();
+      const banner = document.getElementById("sync-warning-banner");
+      const text = document.getElementById("sync-warning-text");
+
+      if (logs.length > 0) {
+        banner.classList.remove("hidden");
+        text.textContent = `⚠️ 未送信のプレイ記録が ${logs.length} 件あります（次回通信時に自動同期）`;
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+
+    // ==========================================
+    // 2. ダッシュボード & GAS データ送受信
+    // ==========================================
+    async function loadDashboardData() {
+      const targetDate = document.getElementById("targetDateInput").value;
+      if (!targetDate) return;
+
+      try {
+        const url = `${GAS_API_URL}?action=getDashboard&date=${encodeURIComponent(targetDate)}`;
+        const res = await fetch(url, { method: "GET" });
+        if (!res.ok) throw new Error("Dashboard fetch failed");
+
+        const data = await res.json();
+        applyDashboardToUI(data);
+      } catch (err) {
+        console.error("ダッシュボード読み込みエラー:", err);
+      }
+    }
+
+    function applyDashboardToUI(data) {
+      if (!data) return;
+      currentDashboard = data;
+
+      // メインカード
+      document.getElementById("remainGameMinutes").textContent = data.remainGame ?? 0;
+      document.getElementById("earnedGameMinutes").textContent = data.earnedGame ?? 0;
+      document.getElementById("usedGameMinutes").textContent = data.usedGame ?? 0;
+      document.getElementById("weekendBonusMinutes").textContent = data.weekendBonus ?? 0;
+      document.getElementById("remainCrystaMinutes").textContent = data.remainCrysta ?? 0;
+
+      // 週末ボーナス表示
+      const indicator = document.getElementById("bonusIndicator");
+      const breakdownBadge = document.getElementById("breakdownBadge");
+      if (data.isWeekendBonusApplied) {
+        indicator.textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
+        breakdownBadge.textContent = "週末・連休ボーナス共有中";
+      } else {
+        indicator.textContent = "いま遊べるゲーム時間（平日枠・当日限り）";
+        breakdownBadge.textContent = "平日枠";
+      }
+
+      // 朝ルーティンUI
+      const mr = data.morningRoutine || {};
+      const wakeTime = mr.wakeTime || "--:--";
+      const bfastTime = mr.breakfastTime || "--:--";
+      document.getElementById("wakeTimeDisplay").textContent = wakeTime;
+      document.getElementById("bfastTimeDisplay").textContent = bfastTime;
+
+      const wakeBadge = document.getElementById("wakeStatusBadge");
+      if (mr.wakePassed) {
+        wakeBadge.textContent = "クリア";
+        wakeBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold";
+      } else {
+        wakeBadge.textContent = "未";
+        wakeBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
+      }
+
+      const bfastBadge = document.getElementById("bfastStatusBadge");
+      if (mr.bfastPassed) {
+        bfastBadge.textContent = "クリア";
+        bfastBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold";
+      } else {
+        bfastBadge.textContent = "未";
+        bfastBadge.className = "text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
+      }
+
+      const morningBadge = document.getElementById("morningGameBadge");
+      if (mr.isUnlocked) {
+        morningBadge.textContent = "✓ 朝ゲーム解禁！";
+        morningBadge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
+      } else {
+        morningBadge.textContent = "✕ 本日の朝ゲーム不可";
+        morningBadge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-600";
+      }
+
+      // 内訳詳細
+      document.getElementById("sumWeekdayEarned").textContent = data.earnedGame ?? 0;
+      document.getElementById("detailWakeReward").textContent = `+${data.breakdown?.wakeReward ?? 0}分`;
+      document.getElementById("detailStudyReward").textContent = `+${data.breakdown?.studyReward ?? 0}分`;
+      document.getElementById("detailYuidoReward").textContent = `+${data.breakdown?.yuidoReward ?? 0}分`;
+      document.getElementById("sumWeekendEarned").textContent = data.weekendBonus ?? 0;
+
+      const subjectContainer = document.getElementById("weekendSubjectList");
+      if (data.breakdown?.weekendSubjects && data.breakdown.weekendSubjects.length > 0) {
+        subjectContainer.innerHTML = data.breakdown.weekendSubjects.map(sub => `
+          <div class="flex justify-between items-center text-[11px]">
+            <span>${sub.name} (${sub.slots}) <span class="text-emerald-600 font-semibold">✓ ${sub.status}</span></span>
+            <span class="font-bold text-indigo-600">+${sub.minutes}分</span>
+          </div>
+        `).join("");
+      } else {
+        subjectContainer.innerHTML = `<div class="text-slate-400 italic">連動データなし</div>`;
+      }
+
+      // タイマー表示リセット
+      if (!timerState.isRunning) {
+        resetTimerDisplayByMode();
+      }
+    }
+
+    // ==========================================
+    // 3. ルーティン打刻アクション
+    // ==========================================
+    async function recordWakeUp() {
+      const now = new Date();
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      if (!confirm(`起床時刻を「${timeStr}」で記録しますか？`)) return;
+
+      await sendDailyLogField("wakeTime", timeStr);
+    }
+
+    async function recordBreakfast() {
+      const now = new Date();
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      if (!confirm(`朝食開始時刻を「${timeStr}」で記録しますか？`)) return;
+
+      await sendDailyLogField("breakfastTime", timeStr);
+    }
+
+    async function sendDailyLogField(field, value) {
+      const targetDate = document.getElementById("targetDateInput").value;
+      const payload = {
+        action: "updateDailyLog",
+        date: targetDate,
+        [field]: value
+      };
 
       try {
         const res = await fetch(GAS_API_URL, {
           method: "POST",
-          body: JSON.stringify({
-            action: "record_morning_tap",
-            target_date: selDate,
-            tap_type: type,
-            time_str: timeStr
-          })
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
         });
-        const json = await res.json();
-        if (json.status === "success") {
-          alert(`${type === 'wake' ? '⏰ 起床' : '🍚 朝食開始'}を記録しました (${timeStr})`);
-          refreshAll();
+        if (res.ok) {
+          loadDashboardData();
         }
-      } catch (e) {
-        alert("通信エラーが発生しました。");
+      } catch (err) {
+        alert("通信に失敗しました。後ほど自動反映されます。");
       }
     }
 
-    function renderRedClassesForSelectedDate(targetDayName, savedMap) {
-      const container = document.getElementById("redClassesList");
-      container.innerHTML = "";
+    // ==========================================
+    // 4. タイマー制御 (スリープ耐性・絶対時刻差分)
+    // ==========================================
+    function onTimerModeChange() {
+      if (timerState.isRunning) return;
+      timerState.mode = document.getElementById("timerModeSelect").value;
+      resetTimerDisplayByMode();
+    }
 
-      const redClasses = currentSchedule.filter(item => item.day === targetDayName && item.mark === "circle" && item.subject);
-
-      if (redClasses.length === 0) {
-        container.innerHTML = `<span class="text-[11px] text-slate-400">※ この曜日（${targetDayName}）は赤丸（〇）宣言の授業はありません</span>`;
-        return;
+    function getAvailableMinutesForMode(mode) {
+      if (mode === "クリスタ") {
+        return currentDashboard.remainCrysta || 0;
       }
-
-      redClasses.forEach(item => {
-        const key = `${item.day}_${item.period}_${item.subject}`;
-        const isChecked = savedMap && savedMap[key] === true;
-
-        const label = document.createElement("label");
-        label.className = "flex items-center justify-between p-2 bg-white rounded-lg border border-red-200 cursor-pointer hover:bg-red-50/50";
-        label.innerHTML = `
-          <div class="flex items-center gap-2.5">
-            <input type="checkbox" data-class-key="${key}" ${isChecked ? 'checked' : ''} class="w-4 h-4 text-red-600 rounded accent-red-500 red-class-check">
-            <span class="font-bold text-red-950">${item.period}限：${item.subject}</span>
-          </div>
-          <span class="text-[10px] text-red-600 font-bold bg-red-100/60 px-1.5 py-0.5 rounded">〇宣言</span>
-        `;
-        container.appendChild(label);
-      });
-    }
-
-    async function refreshAll() {
-      await fetchSavedSchedule();
-      await fetchDashboardData();
-    }
-
-    async function fetchDashboardData() {
-      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
-      try {
-        const res = await fetch(`${GAS_API_URL}?date=${selDate}`);
-        const json = await res.json();
-        if (json.status === "success") {
-          const d = json.data;
-
-          if (d.attended_classes && d.attended_classes.length > 0) {
-            latestAttendedClassesList = d.attended_classes;
-          }
-          calcGoalReward();
-
-          const isHoliday = isWeekendOrHoliday(selDate) || (d.is_weekend_holiday === true);
-          const effectiveWeekendBonus = calculatedWeekendBonusReal > 0 ? calculatedWeekendBonusReal : (d.weekend_bonus || 0);
-
-          let totalPlayable = (d.earned_today || 0);
-          if (isHoliday) {
-            totalPlayable += effectiveWeekendBonus;
-            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（週末・連休ボーナス適用中）";
-            document.getElementById("innerDateNotice").textContent = "週末・連休ボーナス共有中";
-          } else {
-            document.getElementById("timerCardTitle").textContent = "いま遊べるゲーム時間（当日限り有効）";
-            document.getElementById("innerDateNotice").textContent = "当日限り有効（繰越なし）";
-          }
-
-          const spent = (d.spent_today || 0);
-          latestRemainingGameMin = Math.max(0, totalPlayable - spent);
-          latestRemainingCrystaMin = d.crysta_remaining !== undefined ? d.crysta_remaining : 0;
-
-          document.getElementById("displayRemainingMin").textContent = latestRemainingGameMin;
-          document.getElementById("displayEarned").textContent = d.earned_today || 0;
-          document.getElementById("displaySpent").textContent = spent;
-          document.getElementById("displayWeekend").textContent = effectiveWeekendBonus;
-          document.getElementById("wbTotalDisplay").textContent = effectiveWeekendBonus;
-          document.getElementById("displayCrystaRemaining").textContent = latestRemainingCrystaMin;
-          document.getElementById("innerDateLabel").textContent = selDate === getTodayYMD() ? "本日" : selDate;
-
-          if (d.daily_breakdown) {
-            const b = d.daily_breakdown;
-            const wTime = b.wakeTime || "--";
-            const bTime = b.breakfastTime || "--";
-            document.getElementById("wakeRecordedTime").textContent = wTime;
-            document.getElementById("breakfastRecordedTime").textContent = bTime;
-
-            const isWakeOk = (wTime !== "--" && Number(wTime.replace(":", "")) <= 555);
-            const isBreakfastOk = (bTime !== "--" && Number(bTime.replace(":", "")) <= 610);
-
-            const wChip = document.getElementById("wakeStatusChip");
-            if (wTime === "--") {
-              wChip.textContent = "未"; wChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
-            } else if (isWakeOk) {
-              wChip.textContent = "✅ クリア"; wChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700";
-            } else {
-              wChip.textContent = "❌ 超過"; wChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700";
-            }
-
-            const bChip = document.getElementById("breakfastStatusChip");
-            if (bTime === "--") {
-              bChip.textContent = "未"; bChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500";
-            } else if (isBreakfastOk) {
-              bChip.textContent = "✅ クリア"; bChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700";
-            } else {
-              bChip.textContent = "❌ 超過"; bChip.className = "text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700";
-            }
-
-            const mainBadge = document.getElementById("morningStatusBadge");
-            morningGameEligibleToday = isWakeOk && isBreakfastOk;
-            if (morningGameEligibleToday) {
-              mainBadge.textContent = "🎉 朝ゲーム解禁！(6:20〜6:50)";
-              mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 animate-pulse";
-            } else if (wTime !== "--" || bTime !== "--") {
-              mainBadge.textContent = "❌ 本日の朝ゲーム不可";
-              mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200";
-            } else {
-              mainBadge.textContent = "未記録";
-              mainBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
-            }
-
-            document.getElementById("breakdownTodayEarned").textContent = `${d.earned_today || 0} 分`;
-            document.getElementById("bWakeTime").textContent = wTime;
-            document.getElementById("bWakeMin").textContent = `+${b.wakeMin || 0}分`;
-            document.getElementById("bAttendMin").textContent = `+${b.attendMin || 0}分`;
-            document.getElementById("bYuidoMin").textContent = `+${b.yuidoMin || 0}分`;
-            document.getElementById("bCapAlert").classList.toggle("hidden", !b.isCapped);
-            document.getElementById("bYuidoTodayBadge").classList.toggle("hidden", !b.yuidoTodayDone);
-
-            const doneList = [];
-            if (b.studyKokugo) doneList.push("国語");
-            if (b.studySugaku) doneList.push("数学");
-            if (b.studyRika) doneList.push("理科");
-            if (b.studyShakai) doneList.push("社会");
-            if (b.studyEigo) doneList.push("英語");
-
-            if (doneList.length === 5) {
-              document.getElementById("bStudyDetail").textContent = "5教科すべて完了！";
-              document.getElementById("bStudyDetail").className = "text-[10px] text-emerald-600 font-bold block";
-            } else if (doneList.length > 0) {
-              document.getElementById("bStudyDetail").textContent = `達成: ${doneList.join("・")} (${doneList.length}/5)`;
-              document.getElementById("bStudyDetail").className = "text-[10px] text-amber-600 block";
-            } else {
-              document.getElementById("bStudyDetail").textContent = "国2/数4/理2/社2/英4 (未完了)";
-              document.getElementById("bStudyDetail").className = "text-[10px] text-slate-400 block";
-            }
-          }
-
-          updateInitialCountdownDisplay();
-
-          const overAlert = document.getElementById("overLimitAlert");
-          if (totalPlayable - spent < 0) {
-            document.getElementById("overMinutesText").textContent = Math.abs(totalPlayable - spent);
-            overAlert.classList.remove("hidden");
-          } else {
-            overAlert.classList.add("hidden");
-          }
-
-          const wbContainer = document.getElementById("wbListContainer");
-          wbContainer.innerHTML = "";
-          if (calculatedWeekendItems.length > 0) {
-            calculatedWeekendItems.forEach(item => {
-              const row = document.createElement("div");
-              row.className = "flex justify-between items-center";
-              let badge = "";
-              if (item.points === 40) {
-                badge = `<span class="text-emerald-600 font-bold">✓ 全コマ達成</span>`;
-              } else if (item.points === 30) {
-                badge = `<span class="text-indigo-600 font-bold">✓ 一部達成</span>`;
-              } else {
-                badge = `<span class="text-slate-400">未達成</span>`;
-              }
-              row.innerHTML = `
-                <span class="${item.points > 0 ? 'text-indigo-950 font-medium' : 'text-slate-500'}">${item.subject} (${item.attendedCount}/${item.totalCount}コマ) ${badge}</span>
-                <span class="${item.points > 0 ? 'font-bold text-indigo-700' : 'text-slate-400'}">+${item.points}分</span>
-              `;
-              wbContainer.appendChild(row);
-            });
-          } else {
-            wbContainer.innerHTML = `<span class="text-slate-400">まだ時間割〇の達成実績はありません</span>`;
-          }
-        }
-      } catch (e) {
-        console.error("残高取得エラー:", e);
-      }
-    }
-
-    function updateInitialCountdownDisplay() {
-      if (timerStartTime) return;
-
-      const mode = document.getElementById("playTypeSelect").value;
-      const startBtn = document.getElementById("startTimerBtn");
-      const noBalanceNote = document.getElementById("noBalanceNote");
-
       if (mode === "朝ゲーム") {
-        if (morningGameEligibleToday) {
-          const d = new Date();
-          const limit = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6, 50, 0);
-          const diffMin = Math.max(0, Math.min(30, Math.floor((limit - d) / 60000)));
-          document.getElementById("timerCountdownDisplay").textContent = `${String(diffMin).padStart(2, "0")}:00 (6:50終了)`;
-          
-          if (diffMin > 0) {
-            startBtn.disabled = false;
-            startBtn.className = "flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm";
-            startBtn.textContent = "▶ 朝ゲーム スタート";
-            noBalanceNote.classList.add("hidden");
-          } else {
-            startBtn.disabled = true;
-            startBtn.className = "flex-1 bg-slate-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm cursor-not-allowed";
-            startBtn.textContent = "6:50を過ぎたため終了";
-            noBalanceNote.textContent = "⚠️ 朝ゲームの利用可能時間（6:50まで）を過ぎています。";
-            noBalanceNote.classList.remove("hidden");
-          }
-        } else {
-          document.getElementById("timerCountdownDisplay").textContent = "00:00 (ロック中)";
-          startBtn.disabled = true;
-          startBtn.className = "flex-1 bg-slate-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm cursor-not-allowed";
-          startBtn.textContent = "朝ルーティン未クリア";
-          noBalanceNote.textContent = "⚠️ 起床(5:55)と朝食開始(6:10)の両方をクリアすると解禁されます。";
-          noBalanceNote.classList.remove("hidden");
-        }
-        return;
+        // 朝ゲームは6:20〜6:50の間でのみ、6:50までの残り分数
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        const endLimitMins = 6 * 60 + 50; // 6:50 = 410分
+        const diff = endLimitMins - currentMins;
+        return diff > 0 ? diff : 0;
       }
-
-      const totalMin = mode === "クリスタ" ? latestRemainingCrystaMin : latestRemainingGameMin;
-      const mm = String(totalMin).padStart(2, "0");
-      document.getElementById("timerCountdownDisplay").textContent = `${mm}:00`;
-
-      if (totalMin > 0) {
-        startBtn.disabled = false;
-        startBtn.className = "flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm";
-        startBtn.textContent = "▶ スタート";
-        noBalanceNote.classList.add("hidden");
-      } else {
-        startBtn.disabled = true;
-        startBtn.className = "flex-1 bg-slate-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-sm text-sm cursor-not-allowed";
-        startBtn.textContent = "残り時間がありません (0分)";
-        noBalanceNote.textContent = "⚠️ あそべる時間（残高）がありません。";
-        noBalanceNote.classList.remove("hidden");
-      }
+      // 通常ゲーム
+      return currentDashboard.remainGame || 0;
     }
 
-    function changeTimerType() {
-      const type = document.getElementById("playTypeSelect").value;
-      if (type === "クリスタ") {
-        document.getElementById("playDevice").value = "iPad";
-      }
-      updateInitialCountdownDisplay();
+    function resetTimerDisplayByMode() {
+      const mode = document.getElementById("timerModeSelect").value;
+      const availMins = getAvailableMinutesForMode(mode);
+      const totalSeconds = availMins * 60;
+      updateTimerDigits(totalSeconds);
+
+      document.getElementById("timerSubInfo").textContent = `利用枠: ${mode} (最大 ${availMins} 分利用可能)`;
     }
 
     function startTimer() {
-      const mode = document.getElementById("playTypeSelect").value;
-      let targetRemainSec = 0;
+      const mode = document.getElementById("timerModeSelect").value;
 
+      // 朝ゲームの特別バリデーション
       if (mode === "朝ゲーム") {
-        if (!morningGameEligibleToday) {
-          alert("朝のルーティン（起床5:55まで・朝食開始6:10まで）がクリアできていないため、朝ゲームは利用できません。");
+        const mr = currentDashboard.morningRoutine;
+        if (!mr || !mr.isUnlocked) {
+          alert("朝ゲームの条件（5:55までの起床 ＆ 6:10までの朝食開始）が達成されていません。");
           return;
         }
-        const d = new Date();
-        const limit = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6, 50, 0);
-        targetRemainSec = Math.max(0, Math.floor((limit - d) / 1000));
-        if (targetRemainSec <= 0) {
-          alert("6:50を過ぎているため、本日の朝ゲームは終了です。");
+        const now = new Date();
+        const mins = now.getHours() * 60 + now.getMinutes();
+        if (mins < 6 * 60 + 20 || mins >= 6 * 60 + 50) {
+          alert("朝ゲームの利用時間は 6:20 〜 6:50 です。");
           return;
         }
-      } else if (mode === "クリスタ") {
-        if (latestRemainingCrystaMin <= 0) {
-          alert("クリスタの残り時間がありません。");
-          return;
-        }
-        targetRemainSec = latestRemainingCrystaMin * 60;
-      } else {
-        if (latestRemainingGameMin <= 0) {
-          alert("ゲームの残り時間がありません。");
-          return;
-        }
-        targetRemainSec = latestRemainingGameMin * 60;
       }
 
-      try {
-        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtxClass) {
-          audioCtx = new AudioCtxClass();
-          if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-          }
-        }
-      } catch (e) {}
+      const availMins = getAvailableMinutesForMode(mode);
+      if (availMins < 1) {
+        alert("残り時間が1分未満のためタイマーを開始できません。");
+        return;
+      }
 
-      requestWakeLock();
-
-      timerInitialRemainingSec = targetRemainSec;
-      timerStartTime = Date.now();
-      timerElapsedSec = 0;
-
-      document.getElementById("startTimerBtn").disabled = true;
-      document.getElementById("startTimerBtn").classList.add("bg-slate-300");
-      document.getElementById("stopTimerBtn").disabled = false;
-      document.getElementById("alarmBanner").classList.add("hidden");
-      document.getElementById("timerCardBox").classList.remove("timer-alert-active");
-
-      timerInterval = setInterval(syncTimerTick, 1000);
-      syncTimerTick();
-    }
-
-    function syncTimerTick() {
-      if (!timerStartTime) return;
-
+      // タイマー初期化（絶対時刻基準）
+      const durationSeconds = availMins * 60;
       const now = Date.now();
-      timerElapsedSec = Math.floor((now - timerStartTime) / 1000);
+      timerState.isRunning = true;
+      timerState.mode = mode;
+      timerState.startTimestamp = new Date(now);
+      timerState.targetEndTimestamp = now + (durationSeconds * 1000);
+      timerState.allocatedSeconds = durationSeconds;
 
-      const eMins = String(Math.floor(timerElapsedSec / 60)).padStart(2, "0");
-      const eSecs = String(timerElapsedSec % 60).padStart(2, "0");
-      document.getElementById("timerDisplay").textContent = `${eMins}:${eSecs}`;
+      // UI反映
+      document.getElementById("startTimerBtn").disabled = true;
+      document.getElementById("startTimerBtn").className = "w-full bg-slate-200 text-slate-400 font-bold py-3 px-4 rounded-xl cursor-not-allowed";
+      document.getElementById("stopTimerBtn").disabled = false;
+      document.getElementById("stopTimerBtn").className = "w-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl shadow-md transition";
+      document.getElementById("timerModeSelect").disabled = true;
+      document.getElementById("timerRunningBadge").classList.remove("hidden");
 
-      const remainingSec = timerInitialRemainingSec - timerElapsedSec;
-      if (remainingSec > 0) {
-        const rMins = String(Math.floor(remainingSec / 60)).padStart(2, "0");
-        const rSecs = String(remainingSec % 60).padStart(2, "0");
-        document.getElementById("timerCountdownDisplay").textContent = `${rMins}:${rSecs}`;
-      } else {
-        document.getElementById("timerCountdownDisplay").textContent = "00:00 (時間終了！)";
+      // 定期インターバル
+      timerState.intervalId = setInterval(onTimerTick, 500);
+    }
+
+    function onTimerTick() {
+      const now = Date.now();
+      const remainMs = timerState.targetEndTimestamp - now;
+      const remainSec = Math.max(0, Math.ceil(remainMs / 1000));
+
+      updateTimerDigits(remainSec);
+
+      // 時間到達
+      if (remainSec <= 0) {
+        clearInterval(timerState.intervalId);
+        timerState.isRunning = false;
         triggerAlarm();
+        finishTimerAndRecord(timerState.allocatedSeconds / 60);
       }
     }
 
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && timerStartTime) {
-        syncTimerTick();
-        requestWakeLock();
-      }
-    });
+    function stopTimerManual() {
+      if (!timerState.isRunning) return;
 
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator && !wakeLockSentinel) {
-          wakeLockSentinel = await navigator.wakeLock.request('screen');
-          wakeLockSentinel.addEventListener('release', () => {
-            wakeLockSentinel = null;
-          });
-        }
-      } catch (err) {}
+      if (!confirm("タイマーを停止して遊んだ時間を記録しますか？")) return;
+
+      clearInterval(timerState.intervalId);
+      timerState.isRunning = false;
+
+      const elapsedSec = Math.floor((Date.now() - timerState.startTimestamp.getTime()) / 1000);
+      // 1分未満は切り上げまたは実分数
+      const playedMinutes = Math.max(1, Math.ceil(elapsedSec / 60));
+
+      finishTimerAndRecord(playedMinutes);
     }
 
-    function releaseWakeLock() {
-      if (wakeLockSentinel) {
-        wakeLockSentinel.release();
-        wakeLockSentinel = null;
-      }
+    function finishTimerAndRecord(minutes) {
+      const startTime = timerState.startTimestamp;
+      const endTime = new Date();
+      const type = timerState.mode;
+
+      // UIリセット
+      document.getElementById("startTimerBtn").disabled = false;
+      document.getElementById("startTimerBtn").className = "w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl shadow-md transition";
+      document.getElementById("stopTimerBtn").disabled = true;
+      document.getElementById("stopTimerBtn").className = "w-full bg-slate-200 text-slate-400 font-bold py-3 px-4 rounded-xl cursor-not-allowed";
+      document.getElementById("timerModeSelect").disabled = false;
+      document.getElementById("timerRunningBadge").classList.add("hidden");
+
+      // 記録をキュー経由で保存・送信
+      recordPlayLog(startTime, endTime, minutes, type, "Nintendo Switch");
+
+      alert(`タイマー終了！ ${minutes}分 の利用ログを記録しました。`);
+      resetTimerDisplayByMode();
     }
 
+    function emergencySaveRunningTimer() {
+      // 画面を急に閉じられた時の緊急保存
+      const elapsedSec = Math.floor((Date.now() - timerState.startTimestamp.getTime()) / 1000);
+      const playedMinutes = Math.max(1, Math.ceil(elapsedSec / 60));
+
+      const logData = {
+        action: "addPlayLog",
+        logId: "LOG-" + generateLogId(new Date()),
+        recordTime: new Date().toISOString(),
+        startTime: timerState.startTimestamp.toISOString(),
+        endTime: new Date().toISOString(),
+        duration: playedMinutes,
+        type: timerState.mode,
+        device: "Nintendo Switch (PageHide)"
+      };
+
+      const logs = getPendingLogs();
+      logs.push(logData);
+      localStorage.setItem(PENDING_QUEUE_KEY, JSON.stringify(logs));
+    }
+
+    function updateTimerDigits(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      document.getElementById("timerDigits").textContent = `${pad(m)}:${pad(s)}`;
+    }
+
+    // ==========================================
+    // 5. アラーム音 & バイブレーション (Web Audio API)
+    // ==========================================
     function triggerAlarm() {
-      if (alarmInterval) return;
-
-      document.getElementById("alarmBanner").classList.remove("hidden");
-      document.getElementById("timerCardBox").classList.add("timer-alert-active");
-
-      playBeepSequence();
-      alarmInterval = setInterval(playBeepSequence, 2000);
-    }
-
-    function playBeepSequence() {
+      // バイブレーション
       if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 400]);
+        navigator.vibrate([300, 150, 300, 150, 600]);
       }
 
-      if (!audioCtx) return;
+      // ピピピ電子音再生
       try {
-        const playTone = (freq, startTime, duration) => {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const playBeep = (freq, startTime, duration) => {
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
-          osc.type = "sine";
+          osc.type = "square";
           osc.frequency.setValueAtTime(freq, startTime);
           gain.gain.setValueAtTime(0.15, startTime);
           gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
@@ -932,474 +743,28 @@
         };
 
         const now = audioCtx.currentTime;
-        playTone(880, now, 0.12);
-        playTone(880, now + 0.15, 0.12);
-        playTone(880, now + 0.30, 0.12);
-        playTone(1174, now + 0.45, 0.25);
-      } catch (e) {}
-    }
-
-    function stopAlarm() {
-      if (alarmInterval) {
-        clearInterval(alarmInterval);
-        alarmInterval = null;
-      }
-      document.getElementById("alarmBanner").classList.add("hidden");
-      document.getElementById("timerCardBox").classList.remove("timer-alert-active");
-    }
-
-    async function stopTimer() {
-      if (!timerStartTime) return;
-
-      const spentMins = Math.max(1, Math.round(timerElapsedSec / 60));
-      const playType = document.getElementById("playTypeSelect").value;
-      const device = document.getElementById("playDevice").value;
-      const startIso = new Date(timerStartTime).toISOString();
-      const endIso = new Date().toISOString();
-
-      clearInterval(timerInterval);
-      timerInterval = null;
-      timerStartTime = null;
-      stopAlarm();
-      releaseWakeLock();
-
-      document.getElementById("stopTimerBtn").disabled = true;
-      document.getElementById("stopTimerBtn").textContent = "記録中...";
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "log_play",
-            start_time: startIso,
-            end_time: endIso,
-            spent_minutes: spentMins,
-            play_type: playType,
-            device: device
-          })
-        });
-        alert(`${playType} おつかれさま！ ${spentMins} 分 利用したよ。`);
-        refreshAll();
+        playBeep(880, now, 0.15);
+        playBeep(880, now + 0.2, 0.15);
+        playBeep(1760, now + 0.4, 0.35);
       } catch (e) {
-        alert("利用時間の保存に失敗しました。");
-      } finally {
-        document.getElementById("timerDisplay").textContent = "00:00";
-        document.getElementById("stopTimerBtn").textContent = "⏹ おわる（保存）";
-        updateInitialCountdownDisplay();
+        console.warn("Audio Context play error:", e);
       }
     }
 
-    async function resetTodayPlayLog() {
-      const selDate = document.getElementById("timerDateSelect").value || getTodayYMD();
-      if (!confirm(`${selDate} の利用時間（タイマー履歴）をリセットして0分に戻しますか？`)) return;
-
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "clear_today_play",
-            target_date: selDate
-          })
-        });
-        const json = await res.json();
-        if (json.status === "success") {
-          alert("利用時間をリセットしました！");
-          refreshAll();
-        }
-      } catch (e) {
-        alert("リセットに失敗しました。");
-      }
+    // ==========================================
+    // ユーティリティ
+    // ==========================================
+    function pad(n) {
+      return String(n).padStart(2, "0");
     }
 
-    async function loadDailyRecordForSelectedDate() {
-      const selDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
-      
-      if (currentSchedule.length === 0) {
-        await fetchSavedSchedule();
-      }
-
-      const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
-      const dObj = new Date(selDate.replace(/-/g, "/"));
-      const targetDayName = dayNames[dObj.getDay()];
-
-      try {
-        const res = await fetch(`${GAS_API_URL}?action=get_daily_record&date=${selDate}`);
-        const json = await res.json();
-        if (json.status === "success" && json.record) {
-          const r = json.record;
-          document.getElementById("wakeTimeInput").value = r.wake_time || "";
-          document.getElementById("breakfastTimeInput").value = r.breakfast_time || "";
-          document.getElementById("chkKokugo").checked = r.study_kokugo;
-          document.getElementById("chkSugaku").checked = r.study_sugaku;
-          document.getElementById("chkRika").checked = r.study_rika;
-          document.getElementById("chkShakai").checked = r.study_shakai;
-          document.getElementById("chkEigo").checked = r.study_eigo;
-          document.getElementById("yuidoCheck").checked = r.yuido;
-          document.getElementById("hokenCheck").checked = r.hoken_done;
-          currentSavedRedAttendMap = r.red_attend_map || {};
-          updateStudyStatus();
-          renderRedClassesForSelectedDate(targetDayName, currentSavedRedAttendMap);
-        }
-      } catch (e) {
-        console.error("日次レコード読込エラー:", e);
-      }
+    function getLocalDateString(d) {
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
 
-    async function saveDailyActions() {
-      const btn = document.getElementById("saveDailyBtn");
-      btn.disabled = true;
-      btn.textContent = "💾 ほぞん中...";
-
-      const targetDate = document.getElementById("dailyRecordDate").value || getTodayYMD();
-      
-      const redAttendMap = Object.assign({}, currentSavedRedAttendMap);
-      document.querySelectorAll(".red-class-check").forEach(chk => {
-        const key = chk.getAttribute("data-class-key");
-        redAttendMap[key] = chk.checked;
-      });
-
-      const payload = {
-        action: "update_daily",
-        target_date: targetDate,
-        wake_time: document.getElementById("wakeTimeInput").value || "",
-        breakfast_time: document.getElementById("breakfastTimeInput").value || "",
-        study_kokugo: document.getElementById("chkKokugo").checked,
-        study_sugaku: document.getElementById("chkSugaku").checked,
-        study_rika: document.getElementById("chkRika").checked,
-        study_shakai: document.getElementById("chkShakai").checked,
-        study_eigo: document.getElementById("chkEigo").checked,
-        yuido: document.getElementById("yuidoCheck").checked,
-        hoken_done: document.getElementById("hokenCheck").checked,
-        red_attend_map: redAttendMap
-      };
-
-      try {
-        const res = await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.status === "success") {
-          alert(`${targetDate} の実績を保存しました！`);
-          document.getElementById("timerDateSelect").value = targetDate;
-          switchTab("timer");
-        } else {
-          alert("更新に失敗しました: " + json.message);
-        }
-      } catch (e) {
-        alert("通信エラーが発生しました。");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "💾 この日の記録を保存して残高に反映";
-      }
+    function generateLogId(d) {
+      return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
     }
-
-    async function fetchSavedSchedule() {
-      try {
-        const res = await fetch(`${GAS_API_URL}?action=get_schedule`);
-        const json = await res.json();
-        if (json.status === "success" && json.schedule && json.schedule.length > 0) {
-          currentSchedule = json.schedule;
-          if (json.attended_classes) {
-            latestAttendedClassesList = json.attended_classes;
-          }
-          renderTable(json.schedule);
-          calcGoalReward();
-        } else {
-          initBlankSchedule();
-        }
-      } catch (e) {
-        initBlankSchedule();
-      }
-    }
-
-    function initBlankSchedule() {
-      const periods = ["朝", "1", "2", "3", "4", "5", "6"];
-      const days = ["月", "火", "水", "木", "金"];
-      const blank = [];
-      periods.forEach(p => {
-        days.forEach(d => {
-          blank.push({ day: d, period: p, subject: "", mark: null });
-        });
-      });
-      currentSchedule = blank;
-      renderTable(blank);
-    }
-
-    const cameraInput = document.getElementById("cameraInput");
-    const progressSection = document.getElementById("progressSection");
-    const progressBar = document.getElementById("progressBar");
-    const statusMessage = document.getElementById("statusMessage");
-    const percentText = document.getElementById("percentText");
-    const tableBody = document.getElementById("tableBody");
-    const gameTotalMin = document.getElementById("gameTotalMin");
-    const gameEarnedRealMin = document.getElementById("gameEarnedRealMin");
-    const crystaTotalMin = document.getElementById("crystaTotalMin");
-    const gameBreakdownList = document.getElementById("gameBreakdownList");
-    const crystaBreakdownList = document.getElementById("crystaBreakdownList");
-
-    function updateProgress(percent, msg) {
-      progressBar.style.width = percent + "%";
-      percentText.textContent = percent + "%";
-      statusMessage.textContent = msg;
-    }
-
-    cameraInput.addEventListener("change", async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      progressSection.classList.remove("hidden");
-      updateProgress(10, "写真を読み込んでいます...");
-
-      try {
-        updateProgress(30, "写真を軽くリサイズしています...");
-        const base64 = await resizeImage(file, 1600);
-
-        updateProgress(50, "サーバーへ写真を送信中...");
-        let p = 55;
-        const fakeProgress = setInterval(() => {
-          if (p < 90) {
-            p += 5;
-            updateProgress(p, "AIが時間割と印を解析中...");
-          }
-        }, 500);
-
-        const res = await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "parse_schedule",
-            image_data: base64
-          })
-        });
-
-        clearInterval(fakeProgress);
-        const json = await res.json();
-
-        updateProgress(100, "よみとり完了！");
-        setTimeout(() => {
-          progressSection.classList.add("hidden");
-          renderTable(json.schedule || []);
-        }, 400);
-
-      } catch (err) {
-        console.error(err);
-        alert("読み取りに失敗しました。もう一度お試しください。");
-        progressSection.classList.add("hidden");
-      }
-    });
-
-    function resizeImage(file, maxSide) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            let w = img.width, h = img.height;
-            if (w > h && w > maxSide) {
-              h = Math.round((h * maxSide) / w); w = maxSide;
-            } else if (h > maxSide) {
-              w = Math.round((w * maxSide) / h); h = maxSide;
-            }
-            const c = document.createElement("canvas");
-            c.width = w; c.height = h;
-            c.getContext("2d").drawImage(img, 0, 0, w, h);
-            resolve(c.toDataURL("image/jpeg", 0.85).split(",")[1]);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function renderTable(schedule) {
-      currentSchedule = schedule;
-      tableBody.innerHTML = "";
-      const periods = ["朝", "1", "2", "3", "4", "5", "6"];
-      const days = ["月", "火", "水", "木", "金"];
-
-      periods.forEach(p => {
-        const tr = document.createElement("tr");
-        const th = document.createElement("td");
-        th.className = "p-1 border border-slate-200 bg-slate-50 font-bold text-[10px] text-slate-500";
-        th.textContent = p === "朝" ? "朝" : p;
-        tr.appendChild(th);
-
-        days.forEach(d => {
-          const td = document.createElement("td");
-          td.className = "p-1 border border-slate-200 cursor-pointer select-none transition";
-          const item = currentSchedule.find(s => s.day === d && String(s.period) === p);
-          updateCell(td, item);
-
-          td.addEventListener("click", () => {
-            if (!item) return;
-            if (!item.mark) item.mark = "circle";
-            else if (item.mark === "circle") item.mark = "triangle";
-            else item.mark = null;
-            updateCell(td, item);
-            calcGoalReward();
-          });
-          tr.appendChild(td);
-        });
-        tableBody.appendChild(tr);
-      });
-      calcGoalReward();
-    }
-
-    function updateCell(td, item) {
-      td.className = "p-1 border border-slate-200 cursor-pointer select-none text-[10px] sm:text-xs";
-      if (!item) {
-        td.textContent = "ー";
-        return;
-      }
-
-      let badge = "";
-      let statusHtml = "";
-
-      if (item.mark === "circle") {
-        td.classList.add("cell-circle", "font-bold", "text-red-700");
-        badge = "🔴";
-
-        const classKey = `${item.day}_${item.period}_${item.subject}`;
-        const isAttended = latestAttendedClassesList.includes(classKey);
-
-        if (isAttended) {
-          statusHtml = `<span class="block text-[8px] bg-emerald-600 text-white rounded px-1 py-0.2 font-black mt-0.5">✓出席</span>`;
-        } else {
-          statusHtml = `<span class="block text-[8px] bg-red-200 text-red-800 rounded px-1 py-0.2 font-bold mt-0.5">未</span>`;
-        }
-      } else if (item.mark === "triangle") {
-        td.classList.add("cell-triangle", "font-bold", "text-amber-700");
-        badge = "🔺";
-      } else {
-        td.classList.add("text-slate-700", "bg-white");
-      }
-
-      td.innerHTML = `<div>${badge}${item.subject || "ー"}</div>${statusHtml}`;
-    }
-
-    function calcGoalReward() {
-      const gameSubjects = {};
-      const crystaDays = { "月": [], "火": [], "水": [], "木": [], "金": [] };
-
-      currentSchedule.forEach(item => {
-        if (!item.subject || !item.mark) return;
-        if (item.mark === "circle") {
-          if (!gameSubjects[item.subject]) gameSubjects[item.subject] = [];
-          gameSubjects[item.subject].push(`${item.day}_${item.period}_${item.subject}`);
-        } else if (item.mark === "triangle") {
-          if (crystaDays[item.day]) {
-            crystaDays[item.day].push(item.subject);
-          }
-        }
-      });
-
-      if (gameBreakdownList) gameBreakdownList.innerHTML = "";
-      let gTotalEstimate = 0;
-      let gTotalReal = 0;
-      calculatedWeekendItems = [];
-
-      for (const [subj, keys] of Object.entries(gameSubjects)) {
-        gTotalEstimate += 40;
-        const totalCount = keys.length;
-        const attendedCount = keys.filter(k => latestAttendedClassesList.includes(k)).length;
-
-        let realPoints = 0;
-        let badgeHtml = "";
-
-        if (attendedCount === totalCount && totalCount > 0) {
-          realPoints = 40;
-          badgeHtml = `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">全コマ達成 (+40分)</span>`;
-        } else if (attendedCount >= 1 && totalCount > 1) {
-          realPoints = 30;
-          badgeHtml = `<span class="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">一部達成 (+30分)</span>`;
-        } else {
-          realPoints = 0;
-          badgeHtml = `<span class="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">未達成 (+0分)</span>`;
-        }
-
-        gTotalReal += realPoints;
-        calculatedWeekendItems.push({
-          subject: subj,
-          attendedCount: attendedCount,
-          totalCount: totalCount,
-          points: realPoints
-        });
-
-        if (gameBreakdownList) {
-          const row = document.createElement("div");
-          row.className = "flex justify-between items-center p-1.5 bg-white rounded-lg border border-indigo-100 text-slate-700";
-          row.innerHTML = `
-            <div>
-              <div class="font-bold text-indigo-950">🔴 ${subj}</div>
-              <div class="text-[10px] text-slate-500">出席: ${attendedCount}/${totalCount}コマ (見込み最大: 40分)</div>
-            </div>
-            <div>${badgeHtml}</div>
-          `;
-          gameBreakdownList.appendChild(row);
-        }
-      }
-
-      gTotalEstimate += 30;
-      calculatedWeekendBonusReal = gTotalReal;
-
-      if (gameTotalMin) gameTotalMin.textContent = gTotalEstimate;
-      if (gameEarnedRealMin) gameEarnedRealMin.textContent = gTotalReal;
-
-      if (crystaBreakdownList) {
-        crystaBreakdownList.innerHTML = "";
-        let activeDaysCount = 0;
-
-        ["月", "火", "水", "木", "金"].forEach(d => {
-          const list = crystaDays[d];
-          if (list && list.length > 0) {
-            activeDaysCount++;
-            const row = document.createElement("div");
-            row.className = "flex justify-between items-center text-amber-900";
-            row.innerHTML = `
-              <span>🔺 ${d}曜日 (${list.join("・")})</span>
-              <span class="font-bold text-amber-700">+15分(登校時)</span>
-            `;
-            crystaBreakdownList.appendChild(row);
-          }
-        });
-
-        const totalCrystaMin = activeDaysCount * 15;
-        if (activeDaysCount === 0) {
-          crystaBreakdownList.innerHTML = `<span class="text-slate-400 text-[11px]">三角（クリスタ）の宣言はありません</span>`;
-        }
-        if (crystaTotalMin) crystaTotalMin.textContent = totalCrystaMin;
-      }
-    }
-
-    async function saveGoals() {
-      const btn = document.getElementById("saveGoalBtn");
-      btn.disabled = true;
-      btn.textContent = "💾 保存中...";
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "save_goals",
-            schedule: currentSchedule
-          })
-        });
-        alert("目標を最新情報でほぞんしました！いつでもこの画面で確認できます 🎉");
-        switchTab("timer");
-      } catch (e) {
-        alert("保存に失敗しました。");
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "🎯 これで今週の目標をほぞん！";
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", async () => {
-      const today = getTodayYMD();
-      document.getElementById("timerDateSelect").value = today;
-      document.getElementById("dailyRecordDate").value = today;
-      await refreshAll();
-    });
   </script>
 </body>
 </html>
